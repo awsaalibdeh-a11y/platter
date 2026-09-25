@@ -61,7 +61,7 @@
       const tag = veg && MEAT_TAGS.has(r.tag) ? "vegetarian" : r.tag;
       const id = P.saveRecipe({
         title: d.title, tag, sub: r.sub, img: r.img, cr: r.cr, crl: r.crl, dom: "AI remix", min: d.min, serves: d.serves,
-        ing: d.ing, steps: d.steps, about: d.about, level: d.level, serve: d.serve, diet: d.diet, nut: d.nut, kcal: d.kcal, tip: d.notes,
+        ing: d.ing, steps: d.steps, about: d.about, level: d.level, serve: d.serve, diet: d.diet, nut: d.nut, kcal: d.kcal, tip: d.notes, cost: d.cost,
       });
       if (d.changes?.length) P.setNotes(id, `Remixed from “${r.title}” (${label}):\n${d.changes.map((c) => `• ${c}`).join("\n")}`);
       P.toast(`Saved “${d.title}” as a new recipe.`, { action: { label: "Undo", fn: () => { const back = P.recipe(r.id); P.deleteRecipe(id); if (back) P.go(P.pathFor({ tag: back.tag, id: back.id })); } } });

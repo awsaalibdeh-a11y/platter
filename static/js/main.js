@@ -48,6 +48,7 @@
     try { await P.loadLibrary(); }
     catch (e) { console.error(e); P.views.fail(); return; }
     P.views.start();
-    P.loadDetails();                        // descriptions, tips and nutrition: after the first screen is up
+    P.loadDetails();
+    P.prices.start();                       // your currency: guessed from the time zone, then priced once a week                        // descriptions, tips and nutrition: after the first screen is up
   })();
 })();

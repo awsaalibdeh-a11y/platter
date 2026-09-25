@@ -15,7 +15,7 @@
   /* ---------- persisted state ---------- */
   const blank = () => ({
     fav: {}, user: {}, edits: {}, gone: {}, checks: {}, scale: {}, notes: {}, steps: {},
-    rate: {}, made: {}, plan: {}, pantry: { have: [], staples: true }, books: [], diet: { keys: [], on: true },
+    rate: {}, made: {}, plan: {}, pantry: { have: [], staples: true }, books: [], diet: { keys: [], on: true }, prices: { on: true, cc: "", name: "", city: "", cal: null },
     tags: { order: [], names: {}, covers: {}, hidden: {}, custom: [] },
     shop: { recipes: [], extra: [], done: {}, hidden: {} },
     recent: [],
@@ -226,6 +226,10 @@
     if (mode === "quick") return out.sort((a, b) => (a.min || 9999) - (b.min || 9999) || az(a, b));
     if (mode === "fav") return out.sort((a, b) => (!!S.fav[b.id] - !!S.fav[a.id]) || az(a, b));
     if (mode === "rating") return out.sort((a, b) => (S.rate[b.id] || 0) - (S.rate[a.id] || 0) || az(a, b));
+    if (mode === "cheap") {
+      const cost = (r) => P.prices.perServing(r) ?? 1e9;          // recipes without a cost go last
+      return out.sort((a, b) => cost(a) - cost(b) || az(a, b));
+    }
     if (mode === "cooked") return out.sort((a, b) => (S.made[b.id]?.length || 0) - (S.made[a.id]?.length || 0) || az(a, b));
     if (mode === "new") {
       const age = (r) => (r.user ? 1e15 + (r.created || 0) : +r.id || 0);
@@ -331,7 +335,9 @@
     };
     // catalogue details: kept only when there is something, so an edit made before details.json arrived
     // doesn't blank out the sample recipe's description
-    for (const k of ["about", "level", "serve", "tip", "diet", "nut", "kcal"]) {
+    // a cost list only means something while it lines up with the ingredients
+    if (Array.isArray(rec.cost) && rec.cost.length !== clean.ing.length) rec = { ...rec, cost: null };
+    for (const k of ["about", "level", "serve", "tip", "diet", "nut", "kcal", "cost"]) {
       const v = rec[k];
       if (v && (!Array.isArray(v) || v.length)) clean[k] = typeof v === "string" ? v.trim() : v;
     }

@@ -824,6 +824,20 @@ body.helper-open .dock { right: calc(min(25rem, 100vw - 2rem) + 2.2rem); }
   .cookrow .switch-wrap { margin-left: 0; }
 }
 
+/* ================= prices where you are ================= */
+.costbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem 0.6rem; max-width: 48rem; margin: -0.35rem 0 0.9rem; color: #4d4c47; font-size: 0.84rem; }
+.costbar > .ic-wrap .ic { width: 1.05rem; height: 1.05rem; color: #c08a1e; }
+.costbar b { color: var(--ink); }
+.costbar .spin { width: 0.9rem; height: 0.9rem; border-width: 2px; color: #7ea11a; }
+.costbar-where { padding: 0.15rem 0.6rem; border: 0; border-radius: 999px; background: var(--chip); color: var(--muted); font-size: 0.72rem; font-weight: 600; cursor: pointer; }
+.costbar-where:hover { background: var(--lime-soft); color: #33430a; }
+.ing-price { flex: none; margin-left: auto; padding-left: 0.6rem; color: var(--muted); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+.shop-item .ing-price { margin-left: auto; }
+.shop-item .ing-price + .rm { margin-left: 0.2rem; }
+.chip.money { color: #6b4e0c; background: #f7ecd2; }
+.chip.money .ic { color: #c08a1e; }
+button.chip.money:hover { background: #f1e1bb; }
+
 /* ================= your diet, and the fridge photo ================= */
 .dietfit { display: flex; align-items: center; gap: 0.6rem; max-width: 48rem; margin: 0.2rem 0 0.7rem; padding: 0.6rem 0.8rem; border-radius: 0.9rem; font-size: 0.82rem; line-height: 1.4; }
 .dietfit > .ic-wrap .ic { width: 1.05rem; height: 1.05rem; }

@@ -307,8 +307,16 @@ def main():
     if os.path.exists(info_file):
         with open(info_file, encoding="utf-8") as fh:
             info = json.load(fh)
+    costs = {}
+    costs_file = os.path.join(BASE, "scripts", "costs.json")
+    if os.path.exists(costs_file):
+        with open(costs_file, encoding="utf-8") as fh:
+            costs = json.load(fh)
     details = {}
     for r in recipes:
+        c = costs.get(r["id"])
+        if c and len(c) == len(r["ing"]):
+            r["cost"] = c                           # US dollars per ingredient line; the app turns them into local prices
         d = info.get(r["id"], {})
         tip = r.pop("tip", "") or d.get("tip", "")
         if d.get("level"):

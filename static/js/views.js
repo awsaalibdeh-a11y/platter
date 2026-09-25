@@ -57,6 +57,7 @@
     P.on("made", onCook);
     P.on("plan", () => { syncQuick(); if (P.route.mode === "plan") renderDetail(); });
     P.on("books", onBooks);
+    P.on("prices", () => { renderList(); if (["view", "shop", "plan", "discover"].includes(P.route.mode)) renderDetail(); });
     P.on("diet", () => { renderList(); if (P.route.mode === "view" && P.route.id || P.route.mode === "discover" || P.route.mode === "pantry") renderDetail(); });
     P.on("units", () => P.route.mode === "view" && P.route.id && renderDetail());
     P.on("steps", (id) => id === P.route.id && P.route.mode === "view" && renderDetail());
@@ -236,6 +237,7 @@
       h("div", { class: "pop-h" }, "Units"),
       h("div", { class: "pop-seg" }, seg([["orig", "As written"], ["us", "US"], ["metric", "Metric"]], P.unitMode(), (u) => { P.setUnitMode(u); again(); })),
       h("div", { class: "pop-h" }, "Diet"),
+      P.menuItem({ label: "Prices", sub: P.prices.summary(), icon: "coins", onClick: () => { close(); P.prices.sheet(); } }),
       P.menuItem({ label: "My diet", sub: P.diet.has() ? P.diet.summary() : "Low fat, no milk, vegetarian… not set", icon: "leaf", onClick: () => { close(); P.diet.sheet(); } }),
       P.menuItem({ label: "Keyboard shortcuts", icon: "keyboard", onClick: () => { close(); shortcuts(); } }),
       h("div", { class: "pop-sep" }),
@@ -273,7 +275,7 @@
   }
 
   function sortMenu(anchor) {
-    const sorts = [["az", "Title A–Z"], ["za", "Title Z–A"], ["new", "Newest first"], ["quick", "Quickest first"], ["fav", "Favorites first"], ["rating", "Top rated first"], ["cooked", "Most cooked first"]];
+    const sorts = [["az", "Title A–Z"], ["za", "Title Z–A"], ["new", "Newest first"], ["quick", "Quickest first"], ["fav", "Favorites first"], ["rating", "Top rated first"], ["cooked", "Most cooked first"], ...(P.prices.show() ? [["cheap", "Cheapest first"]] : [])];
     const subs = [...new Set(P.inTag(P.route.tag).map((r) => r.sub).filter(Boolean))].sort();
     const bookId = P.isBook(P.route.tag) ? P.route.tag : null;
     P.popover(anchor, (close) => [
@@ -379,7 +381,10 @@
       h("span", { class: "row-dom" }, h("span", { class: "row-dom-text" }, rowMeta(r)), h("span", { class: "row-fav", html: icon("star") }))));
   }
   /** "35 min · Easy", or where the recipe came from when there's nothing better to say. */
-  const rowMeta = (r) => [r.min ? P.fmtMin(r.min) : "", r.level || ""].filter(Boolean).join(" · ") || r.dom || "";
+  const rowMeta = (r) => {
+    const cost = P.prices.perServing(r);
+    return [r.min ? P.fmtMin(r.min) : "", r.level || "", cost != null ? P.prices.fmt(cost) : ""].filter(Boolean).join(" · ") || r.dom || "";
+  };
 
   function emptyList() {
     const tag = P.route.tag;
@@ -520,6 +525,7 @@
         stat("people", String(servings), servings === 1 ? "Serving" : "Servings", "serves"),
         stat("bars", r.level || "—", "Difficulty"),
         stat("fire", r.kcal ? String(r.kcal) : "—", "kcal / serving")),
+      P.prices.bar(r, servings),
       chipsEl(r),
       P.diet.badge(r),
       cookRowEl(r),
@@ -655,16 +661,20 @@
     if (statServes) { statServes.querySelector("b").textContent = String(servings); statServes.querySelector("small").textContent = servings === 1 ? "Serving" : "Servings"; }
     els.scroll.querySelector(".ings")?.replaceWith(ingredientsEl(r, f));
     els.scroll.querySelector(".shopbar")?.replaceWith(shopBarEl(r, f));
+    const bar = P.prices.bar(r, servings), old = els.scroll.querySelector('[data-role="cost"]');
+    if (old && bar) old.replaceWith(bar);
     if (focusLabel >= 0) els.scroll.querySelectorAll(".scaler button")[focusLabel]?.focus({ preventScroll: true });
   }
 
   function ingredientsEl(r, f) {
     const done = P.checked(r.id);
+    const prices = P.prices.show() && r.cost?.length === r.ing.length;
     const ul = h("ul", { class: "ings" });
     r.ing.forEach((line, i) => {
       const on = done.has(i);
       const li = h("li", { class: "ing" + (on ? " done" : ""), role: "checkbox", tabindex: "0", "aria-checked": String(on) },
-        h("span", { class: "cb", html: icon("check") }), h("span", { class: "txt" }, P.scaleLine(line, f)));
+        h("span", { class: "cb", html: icon("check") }), h("span", { class: "txt" }, P.scaleLine(line, f)),
+        prices ? h("span", { class: "ing-price", title: `${P.prices.place()} price for this amount (estimate)` }, P.prices.amount(P.prices.lineCost(r, i, f))) : null);
       const flip = () => {
         if (selecting(li)) return;                                                  // selecting words to ask about them is not a tap
         const now = P.toggleCheck(r.id, i);
@@ -851,7 +861,7 @@
         f.tag.value = P.guessTag(x.title, "", x.ing || []);
         fillSubs();
         f.sub.value = x.sub || "";
-        Object.assign(d, { level: x.level, serve: x.serve, diet: x.diet, nut: x.nut, kcal: x.kcal });     // kept when you press Done
+        Object.assign(d, { level: x.level, serve: x.serve, diet: x.diet, nut: x.nut, kcal: x.kcal, cost: x.cost, ing: x.ing || [] });     // kept when you press Done
         status.classList.remove("err");
         status.textContent = `Read from your ${how}. Check it over, add a photo if you like, then press Done.`;
       };
@@ -873,6 +883,7 @@
         min: Math.round(+f.min.value) || null, serves: Math.max(1, Math.round(+f.serves.value) || 4),
         ing: lines(f.ing.value), steps: lines(f.steps.value),
         about: f.about.value, level: d.level, serve: d.serve, diet: d.diet, nut: d.nut, kcal: d.kcal, tip: d.tip,
+        cost: d.cost && lines(f.ing.value).join("\n") === (d.ing || []).join("\n") ? d.cost : null,     // prices fit only the lines they were made for
       });
       state.muteData = false;
       renderTiles();
@@ -977,7 +988,7 @@
     const skipped = r.ing.length - lines.length;
     const add = () => {
       const servings = P.scaleOf(r);
-      const res = P.shop.add(r, servings, lines);
+      const res = P.shop.add(r, servings, lines, P.prices.costsFor(r, f, (i) => !ticked.has(i)));
       P.toast(res.updated ? `Updated your list for ${servings} servings.` : `Added ${P.plural(res.added, "item")} to your shopping list.`, { action: { label: "View", fn: openShop } });
     };
     return h("div", { class: "shopbar" },

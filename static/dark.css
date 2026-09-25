@@ -282,6 +282,16 @@
 :root[data-theme="dark"] .dplan { background: var(--lime-soft); }
 :root[data-theme="dark"] .dplan .drow-head h2 { color: #c7e28d; }
 :root[data-theme="dark"] .dplan-item { background: #242424; }
+:root[data-theme="dark"] .costbar { color: #b2b0ab; }
+:root[data-theme="dark"] .costbar > .ic-wrap .ic { color: #e2c68d; }
+:root[data-theme="dark"] .costbar b { color: var(--ink); }
+:root[data-theme="dark"] .costbar .spin { color: #cce28d; }
+:root[data-theme="dark"] .costbar-where { background: var(--chip); color: var(--muted); }
+:root[data-theme="dark"] .costbar-where:hover { background: var(--lime-soft); color: #cae28d; }
+:root[data-theme="dark"] .ing-price { color: var(--muted); }
+:root[data-theme="dark"] .chip.money { color: #e2c88d; background: #3c341f; }
+:root[data-theme="dark"] .chip.money .ic { color: #e2c68d; }
+:root[data-theme="dark"] button.chip.money:hover { background: #3c3320; }
 :root[data-theme="dark"] .dietfit.ok { background: #323a22; color: #c5e28d; }
 :root[data-theme="dark"] .dietfit.no { background: #3e281e; color: #e29d8d; }
 :root[data-theme="dark"] .fchip.diet { background: #323a22; color: #c5e28d; }

@@ -7,7 +7,7 @@
   const P = window.P;
   const { h } = P;
   const hi = (name) => h("span", { class: "ic-wrap", html: P.icon(name) });
-  const FIELDS = ["title", "tag", "sub", "img", "cr", "crl", "src", "dom", "min", "serves", "video", "ing", "steps", "about", "level", "serve", "tip", "diet", "nut", "kcal"];
+  const FIELDS = ["title", "tag", "sub", "img", "cr", "crl", "src", "dom", "min", "serves", "video", "ing", "steps", "about", "level", "serve", "tip", "diet", "nut", "kcal", "cost"];
 
   const toB64 = (bytes) => { let s = ""; for (const b of bytes) s += String.fromCharCode(b); return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); };
   const fromB64 = (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
@@ -38,6 +38,7 @@
       level: ["Easy", "Medium", "Hard"].includes(o.level) ? o.level : "", serve: String(o.serve || "").slice(0, 100),
       tip: String(o.tip || "").slice(0, 300), diet: strs(o.diet, 5, 20), kcal: +o.kcal || null,
       nut: Array.isArray(o.nut) && o.nut.length === 4 && o.nut.every((x) => Number.isFinite(+x)) ? o.nut.map((x) => +x) : null,
+      cost: Array.isArray(o.cost) && o.cost.every((x) => Number.isFinite(+x) && +x >= 0 && +x < 100) ? o.cost.map((x) => +x) : null,
     };
     if (!r.title || !r.ing.length) throw new Error("incomplete");
     return r;

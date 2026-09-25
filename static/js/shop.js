@@ -110,16 +110,17 @@
 
   const collect = () => {
     const map = new Map();
-    const put = (line, source) => {
+    const put = (line, source, usd) => {
       const it = read(line);
       if (!it.name) return;
       const key = keyOf(it);
       let e = map.get(key);
       if (!e) map.set(key, (e = { key, name: it.name, size: it.size, fam: it.fam, unitOne: it.unitOne, total: 0, hasQty: false, from: new Set() }));
       if (it.q != null) { e.hasQty = true; e.total += it.q * (it.mult || 1); }
+      if (usd != null && P.prices?.show()) e.cost = (e.cost || 0) + P.prices.here(usd, line);     // what it costs where you are
       e.from.add(source);
     };
-    for (const r of S().recipes) for (const line of r.lines) put(line, r.title);
+    for (const r of S().recipes) r.lines.forEach((line, i) => put(line, r.title, r.c ? r.c[i] : null));
     for (const x of S().extra) put(x.text, "Added by you");
     return map;
   };
@@ -134,10 +135,11 @@
     recipes: () => S().recipes,
     /** What an ingredient line is called ("2 cloves garlic, minced" → "garlic"): what the pantry finder matches on. */
     nameOf: (line) => read(line).name,
+    aisleOfName: (name) => aisleOf(name),
 
     sections() {
       const items = [...collect().values()].filter((e) => !S().hidden[e.key]).map((e) => ({
-        key: e.key, name: e.name, text: textOf(e), aisle: aisleOf(e.name), done: !!S().done[e.key], from: [...e.from],
+        key: e.key, name: e.name, text: textOf(e), aisle: aisleOf(e.name), done: !!S().done[e.key], from: [...e.from], cost: e.cost ?? null,
       }));
       const by = {};
       for (const it of items) (by[it.aisle] ||= []).push(it);
@@ -146,10 +148,11 @@
     count() { return this.sections().reduce((n, s) => n + s.items.filter((i) => !i.done).length, 0); },
 
     /** Put a recipe's (already scaled) lines on the list; adding it again updates it. */
-    add(recipe, servings, lines) {
+    add(recipe, servings, lines, costs) {
       const list = S().recipes;
       const i = list.findIndex((x) => x.id === recipe.id);
       const entry = { id: recipe.id, title: recipe.title, servings, lines, at: Date.now() };
+      if (costs && costs.length === lines.length) entry.c = costs.map((x) => Math.round(x * 100) / 100);     // US dollars, per line
       if (i >= 0) list[i] = entry; else list.push(entry);
       for (const line of lines) {                                               // bring back anything you had cleared
         const k = keyForLine(line);
@@ -224,6 +227,7 @@
     const row = (it) => {
       const li = h("li", { class: "ing shop-item" + (it.done ? " done" : ""), role: "checkbox", tabindex: "0", "aria-checked": String(it.done), title: `From ${it.from.join(", ")}` },
         h("span", { class: "cb", html: P.icon("check") }), h("span", { class: "txt" }, it.text),
+        it.cost != null ? h("span", { class: "ing-price" }, P.prices.amount(it.cost)) : null,
         h("button", { class: "rm", type: "button", "aria-label": `Remove ${it.name}`, html: P.icon("x"), onClick: (e) => { e.stopPropagation(); undoToast(`Removed ${it.name}.`, P.shop.hide(it.key)); } }));
       li.addEventListener("click", () => P.shop.toggle(it.key));
       li.addEventListener("keydown", (e) => { if ((e.key === " " || e.key === "Enter") && e.target === li) { e.preventDefault(); P.shop.toggle(it.key); } });
@@ -234,6 +238,12 @@
       h("h1", { class: "title" }, "Shopping list"),
       h("div", { class: "chips" },
         h("span", { class: "chip" }, hi("cart"), all.length ? `${open} to buy` : "Nothing yet"),
+        (() => {                                               // what the rest of the list costs, where you are
+          const priced = all.filter((i) => !i.done && i.cost != null);
+          if (!priced.length || !P.prices.show()) return null;
+          const sum = priced.reduce((n, i) => n + i.cost, 0);
+          return h("button", { class: "chip money", type: "button", title: `${P.prices.place()} prices, AI estimate. Change`, onClick: () => P.prices.sheet() }, hi("coins"), `≈ ${P.prices.fmt(sum)}`);
+        })(),
         done ? h("span", { class: "chip" }, hi("check"), `${done} in the basket`) : null,
         recipes.length ? h("span", { class: "chip" }, hi("book"), P.plural(recipes.length, "recipe")) : null),
       h("div", { class: "shop-add" }, input, h("button", { class: "btn lime", type: "button", onClick: add }, hi("plus"), "Add")),

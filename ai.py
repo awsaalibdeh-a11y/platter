@@ -195,9 +195,10 @@ RECIPE_PROMPT = """You write one complete, reliable home-cooking recipe as JSON 
 - "level": "Easy", "Medium" or "Hard" for a home cook. "serve": what to serve it with, max 70 characters.
 - "kcal", "protein", "carbs", "fat": estimates per serving, integers (grams for the last three).
 - "diet": the labels strictly true of the recipe as written, from "vegetarian", "vegan", "gluten-free", "dairy-free", "spicy".
+- "costs": for each ingredient line, in order, what the amount used costs at typical US supermarket prices in US dollars (2 tbsp olive oil ≈ 0.35).
 - Respect every constraint in the request (diet, allergens, time, equipment).
 Tags to choose from (id: name): {tags}
-Return ONLY JSON: {{"title": str, "cuisine": str or "", "tag": one tag id, "minutes": int total time, "serves": int, "ingredients": [str], "steps": [str], "notes": str, "about": str, "level": str, "serve": str, "kcal": int, "protein": int, "carbs": int, "fat": int, "diet": [str]}}"""
+Return ONLY JSON: {{"title": str, "cuisine": str or "", "tag": one tag id, "minutes": int total time, "serves": int, "ingredients": [str], "steps": [str], "notes": str, "about": str, "level": str, "serve": str, "kcal": int, "protein": int, "carbs": int, "fat": int, "diet": [str], "costs": [number]}}"""
 
 HELP_PROMPT = """You are the cooking helper inside a recipe app. The cook has the recipe below open and asks about it, sometimes about a part they highlighted. Answer like a patient chef standing beside them.
 - Answer in the first sentence, in plain words. Explain any technique or term (fold, deglaze, blind bake, soft peaks, a rolling boil…) and how to tell it is done right: what it should look, smell, sound or feel like.
@@ -291,7 +292,18 @@ def details(data, ings):
         "about": _s(data.get("about"), 420), "level": level if level in ("Easy", "Medium", "Hard") else "",
         "serve": _s(data.get("serve"), 90), "diet": diet_labels(data.get("diet"), ings),
         "nut": nut if 40 <= kcal <= 2500 else None, "kcal": kcal if 40 <= kcal <= 2500 else None,
+        "cost": _costs(data.get("costs"), len(ings)),
     }
+
+
+def _costs(raw, n):
+    """What each ingredient line costs in US dollars, only when there's exactly one number per line."""
+    if not isinstance(raw, list) or len(raw) != n or not n:
+        return None
+    try:
+        return [round(min(max(float(x), 0.0), 80.0), 2) for x in raw]
+    except (TypeError, ValueError):
+        return None
 
 
 # ---------- "I don't understand this part": questions about the open recipe, answered as a stream ----------
@@ -515,14 +527,15 @@ def photo():
 _RULES = """- "ingredients": 5 to 20 strings, each starting with an amount and unit (cup, tbsp, tsp, oz, lb, g, ml) or a plain count, then the ingredient, then any prep after a comma: "2 cloves garlic, minced". Only salt, pepper, frying oil and garnish may say "to taste" or "as needed".
 - "steps": short imperative steps without numbers; times ("simmer for 10 minutes") and temperatures ("425°F") inside the text. Meat, poultry, fish and eggs cooked to safe temperatures.
 - "about": 2 or 3 sentences, max 380 characters: what the dish is and how it tastes; no hype words. "level": "Easy", "Medium" or "Hard". "serve": what to serve it with, max 70 characters.
-- "kcal", "protein", "carbs", "fat": estimates per serving, integers. "diet": labels strictly true of it, from "vegetarian", "vegan", "gluten-free", "dairy-free", "spicy"."""
+- "kcal", "protein", "carbs", "fat": estimates per serving, integers. "diet": labels strictly true of it, from "vegetarian", "vegan", "gluten-free", "dairy-free", "spicy".
+- "costs": for each ingredient line, in order, what the amount used costs at typical US supermarket prices in US dollars."""
 
 REMIX_PROMPT = """You rework a home-cooking recipe the way a good cook would, following the change the cook asks for. Keep the dish recognisable and keep whatever doesn't need to change; change ingredients, amounts, steps, times and servings wherever the change needs it. If the change can't be done honestly (a vegetarian version of a dish that is nothing but meat), make the closest honest version and say so.
 - "title": a short, honest name for the new version, e.g. "Paneer Butter Masala" or "Lighter Chicken Tikka Masala".
 """ + _RULES + """
 - "changes": 2 to 4 short strings (max 90 characters each) saying what you changed and why.
 - "notes": one practical tip for this version, max 200 characters.
-Return ONLY JSON: {"title": str, "minutes": int, "serves": int, "ingredients": [str], "steps": [str], "changes": [str], "notes": str, "about": str, "level": str, "serve": str, "kcal": int, "protein": int, "carbs": int, "fat": int, "diet": [str]}"""
+Return ONLY JSON: {"title": str, "minutes": int, "serves": int, "ingredients": [str], "steps": [str], "changes": [str], "notes": str, "about": str, "level": str, "serve": str, "kcal": int, "protein": int, "carbs": int, "fat": int, "diet": [str], "costs": [number]}"""
 
 EXTRACT_PROMPT = """You read a recipe from a photo (a cookbook page, a card, a screenshot, handwriting) or from pasted text, and write it out as JSON for a cooking app. Copy it faithfully: keep the author's title, amounts, ingredients and method; don't add or invent anything, except to split run-on text into clean ingredient lines and separate steps, and to fix obvious OCR slips.
 - "title": the recipe's own title, or a short plain one if it has none. "minutes": total time if stated or clearly implied, else 0. "serves": if stated, else 4. "cuisine": if obvious, else "".
@@ -530,7 +543,7 @@ EXTRACT_PROMPT = """You read a recipe from a photo (a cookbook page, a card, a s
 - "about", "level", "serve", "kcal", "protein", "carbs", "fat", "diet": your own short description and estimates, by these rules:
 """ + _RULES + """
 If there is no recipe in it, return {"error": "one short sentence saying what you see instead"}.
-Return ONLY JSON: {"title": str, "cuisine": str, "minutes": int, "serves": int, "ingredients": [str], "steps": [str], "about": str, "level": str, "serve": str, "kcal": int, "protein": int, "carbs": int, "fat": int, "diet": [str]}"""
+Return ONLY JSON: {"title": str, "cuisine": str, "minutes": int, "serves": int, "ingredients": [str], "steps": [str], "about": str, "level": str, "serve": str, "kcal": int, "protein": int, "carbs": int, "fat": int, "diet": [str], "costs": [number]}"""
 
 STRIP_NO = re.compile(r"^\s*(?:step\s*)?\d+[.):]\s*", re.I)
 

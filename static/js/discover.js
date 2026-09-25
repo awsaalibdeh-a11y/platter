@@ -72,6 +72,9 @@
     const again = P.diet.filter(P.inTag("made")).filter((r) => r.img).slice(0, 14);
     const favs = daily(P.diet.filter(P.inTag("fav")).filter((r) => r.img), "fav", 14);
     const chicken = daily(P.diet.filter(P.inTag("chicken")).filter((r) => r.img), "chicken", 14);
+    const priced = P.prices.show() ? all.filter((r) => MAINS.has(r.tag) && P.prices.perServing(r) != null).sort((a, b) => P.prices.perServing(a) - P.prices.perServing(b)) : [];
+    const cheapCut = priced[Math.floor(priced.length / 5)];
+    const cheap = cheapCut ? daily(priced.slice(0, Math.floor(priced.length / 5)), "cheap", 14) : [];
     const veg = daily(all.filter((r) => (r.diet || []).includes("vegetarian") && MAINS.has(r.tag)), "veg", 14);
     const sweet = daily(P.diet.filter(P.inTag("desserts")).filter((r) => r.img), "sweet", 14);
 
@@ -108,6 +111,7 @@
       row("Quick weeknight dinners", quick, () => P.views.browse({ quick: true })),
       again.length ? row("Cook it again", again, () => P.go(P.pathFor({ tag: "made" }))) : null,
       favs.length ? row("Your favorites", favs, () => P.go(P.pathFor({ tag: "fav" }))) : null,
+      cheap.length ? row(`Cheap eats · under ${P.prices.fmt(P.prices.perServing(cheapCut))} a serving`, cheap, () => { P.S.ui.sort = "cheap"; P.save(); P.views.browse({}); }) : null,
       row("New in Platter", fresh),
       P.books().length ? h("section", { class: "drow" }, h("div", { class: "drow-head" }, h("h2", {}, "Your cookbooks")),
         h("div", { class: "dchips" }, P.books().map((b) => h("button", { class: "ai-chip", type: "button", onClick: () => P.go(P.pathFor({ tag: b.id })) }, hi("bookmark"), b.name, h("em", {}, ` ${P.inTag(b.id).length}`))))) : null,

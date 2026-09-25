@@ -15,6 +15,13 @@ like an iPad app, in a browser.
 - **A door at the front**: on the first visit Platter asks for its creator's name. The right name (any capitalisation)
   opens it for good; a wrong one gives 30 minutes with a timer in the corner, then Platter closes behind a lock
   screen until the name is given (`static/js/gate.js`). It is stored in the visitor's browser, like everything else
+- **Prices where you are**: every recipe shows what it costs in your currency, per ingredient, per serving and in
+  total (it follows the servings you pick); so do list rows (and "Cheapest first"), the shopping list total, the meal
+  plan's week and a "Cheap eats" row on Discover. Where you are is guessed from your device's time zone (no location
+  permission, no IP lookup); change it, add your city or share your precise location in the settings menu. Each recipe
+  carries the US cost of each ingredient line (`scripts/costs.py`); `prices.py` has the AI price a basket of 29
+  everyday groceries where you are, compares it with US prices kind by kind (meat, dairy, produce…), checks it against
+  today's exchange rate, and keeps it for a week. All prices are estimates, and say so
 - **Your diet**: pick what you eat and avoid (vegetarian, vegan, pescatarian; no milk/dairy, no eggs, no gluten, no nuts,
   no shellfish, no pork, no alcohol) and your goals (low fat, low carb, under 500 kcal, high protein). Lists, Discover, the
   meal planner and "What can I make?" show only what fits; each recipe says whether it fits and, if not, which
@@ -108,6 +115,7 @@ changing colours in `style.css`.
 
 ```
 app.py                 Flask: page, cached/gzipped assets, /api/import (SSRF-guarded)
+prices.py              /api/prices: a grocery basket priced where you are, as a factor per kind of food
 ai.py                  /api/ai/ideas, /api/ai/recipe, /api/ai/remix, /api/ai/extract, /api/ai/fridge, /api/ai/ask (OpenAI) and /api/ai/photo (free photo sources)
 templates/index.html   the three panes
 static/style.css       every size measured from the reference, in rem
@@ -121,6 +129,7 @@ static/js/pantry.js    "What can I make?": ranks recipes by what is in the kitch
 static/js/ai.js        the Ask AI pane
 static/js/gate.js      the "name the creator" door and its 30-minute timer
 static/js/aitools.js   Remix, reading a recipe in from a photo or text, and the fridge photo
+static/js/prices.js    prices where you are: the guess, the settings sheet, costs in your money
 static/js/diet.js      your diet: the rules, checking a recipe against them, the settings sheet
 static/js/books.js     cookbooks, and the Your kitchen page
 static/js/share.js     share links that carry the recipe, and the page they open
@@ -131,6 +140,8 @@ static/dark.css        the dark theme (generated)
 static/sw.js           the service worker: the app and library offline, remembered photos
 scripts/add_chicken.py writes scripts/extras/chicken.json (the extra chicken, turkey and duck dishes)
 scripts/add_recipes.py writes scripts/extras/more.json (206 dishes across the other tags)
+scripts/costs.py       writes scripts/costs.json (what each ingredient line costs in US dollars)
+scripts/build_timezones.py writes static/data/tz.json (time zone to country, from IANA)
 scripts/enrich.py      writes scripts/details.json (descriptions, levels, nutrition, diet labels)
 scripts/build_dark_css.py  writes static/dark.css from static/style.css
 static/js/views.js     tiles, list, recipe, editor

@@ -35,6 +35,10 @@ from ai import bp as ai_bp  # noqa: E402  (after load_dotenv so it sees OPENAI_M
 
 app.register_blueprint(ai_bp)
 
+from prices import bp as prices_bp  # noqa: E402
+
+app.register_blueprint(prices_bp)
+
 # ---------- assets: gzipped once, kept in memory ----------
 # Flask's own static route streams files, which compression middleware leaves alone — so the
 # 1.2 MB recipe library would have gone out raw. Reading each asset once, gzipping the textual

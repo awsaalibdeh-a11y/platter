@@ -37,10 +37,10 @@
   const prep = (r) => {
     let lines = PREP.get(r);
     if (!lines) {
-      lines = r.ing.map((line) => {
+      lines = r.ing.map((line, i) => {
         const name = P.shop.nameOf(line);
         const w = words(name);
-        return { line, name, w: new Set(w), tail: w[w.length - 1] || "", staple: STAPLE.test(name), optional: OPTIONAL.test(line) };
+        return { line, i, name, w: new Set(w), tail: w[w.length - 1] || "", staple: STAPLE.test(name), optional: OPTIONAL.test(line) };
       }).filter((l) => l.w.size);
       PREP.set(r, lines);
     }
@@ -135,7 +135,7 @@
       const names = x.missing.map((l) => l.name);
       const addMissing = () => {
         const f = P.scaleOf(r) / (r.serves || 4);
-        const res = P.shop.add(r, P.scaleOf(r), x.missing.map((l) => P.scaleLine(l.line, f)));
+        const res = P.shop.add(r, P.scaleOf(r), x.missing.map((l) => P.scaleLine(l.line, f)), r.cost ? x.missing.map((l) => (r.cost[l.i] || 0) * f) : null);
         P.toast(`Added the ${P.plural(res.added, "missing item")} for ${r.title}.`, { action: { label: "View", fn: () => P.go("shop") } });
         paint();
       };

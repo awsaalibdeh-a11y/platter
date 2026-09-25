@@ -231,7 +231,7 @@
       for (const d of dates) for (const e of P.plan.on(key(d))) totals.set(e.id, (totals.get(e.id) || 0) + e.servings);
       for (const [id, servings] of totals) {
         const r = P.recipe(id), ticked = P.checked(id), f = servings / (r.serves || 4);
-        P.shop.add(r, servings, r.ing.map((l, i) => (ticked.has(i) ? null : P.scaleLine(l, f))).filter(Boolean));     // ticked = already have it
+        P.shop.add(r, servings, r.ing.map((l, i) => (ticked.has(i) ? null : P.scaleLine(l, f))).filter(Boolean), P.prices.costsFor(r, f, (i) => !ticked.has(i)));     // ticked = already have it
       }
       P.toast(`Added ${P.plural(totals.size, "recipe")} to your shopping list.`, { action: { label: "View", fn: () => P.go("shop") } });
     };
@@ -249,6 +249,11 @@
           h("button", { type: "button", "aria-label": "Next week", html: P.icon("chevronRight"), onClick: () => go(1) })),
         h("span", { class: "chip" }, hi("calendar"), range),
         planned.length ? h("span", { class: "chip" }, hi("book"), P.plural(planned.length, "meal")) : null,
+        (() => {                                               // the week's food, where you are
+          if (!P.prices.show()) return null;
+          const costs = planned.map((e) => P.prices.recipeCost(P.recipe(e.id), e.servings)?.total).filter((x) => x != null);
+          return costs.length ? h("button", { class: "chip money", type: "button", title: `${P.prices.place()} prices, AI estimate`, onClick: () => P.prices.sheet() }, hi("coins"), `≈ ${P.prices.fmt(costs.reduce((a, b) => a + b, 0))}`) : null;
+        })(),
         h("button", { class: "btn lime sm auto-btn", type: "button", onClick: () => autoPlan(dates) }, hi("sparkle"), "Plan it for me")),
       h("div", { class: "plan-days" }, dates.map(dayEl)),
       h("div", { class: "plan-foot" },
