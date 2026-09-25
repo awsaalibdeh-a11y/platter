@@ -356,7 +356,7 @@ def ask():
             messages.append({"role": "assistant" if turn.get("role") == "ai" else "user", "content": said})
     focus = _s(body.get("focus"), 700)
     messages.append({"role": "user", "content": f'The part I mean: "{focus}"\n\n{q}' if focus else q})
-    return Response(_stream(messages), mimetype="text/plain; charset=utf-8",
+    return Response(_stream(messages), content_type="text/plain; charset=utf-8",
                     headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
