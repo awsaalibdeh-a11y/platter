@@ -107,3 +107,19 @@ test("prices: a line costs its US price times its kind's factor", () => {
   assert.match(P.prices.fmt(5.25), /5[.,]25/);
   P.S.prices.cal = null;
 });
+
+test("typos in a search are fixed against the words the library really has", () => {
+  const lib = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "static", "data", "library.json"), "utf8"));
+  P.lib.seedTags = lib.tags;
+  P.lib.seed = lib.recipes;
+  for (const r of lib.recipes) P.lib.seedById[r.id] = r;
+  P.saveRecipe({ title: "reload", ing: [], steps: [] });           // any change marks the library as needing a rebuild
+  const fix = (q) => P.fixQuery(q).q;
+  assert.equal(fix("chiken"), "chicken");
+  assert.equal(fix("spagheti"), "spaghetti");
+  assert.equal(fix("chiken curry"), "chicken curry");
+  assert.equal(fix("garlic"), "garlic");                          // right already: left alone
+  assert.equal(fix("chi"), "chi");                                // too short to guess at, and a prefix while typing
+  assert.equal(fix("xqzvw"), "xqzvw");                            // nothing close: left alone
+  assert.ok(P.search(P.recipes(), fix("chiken tika")).some((r) => /chicken tikka/i.test(r.title)));
+});

@@ -282,6 +282,11 @@
 :root[data-theme="white"] .dplan { background: var(--lime-soft); }
 :root[data-theme="white"] .dplan .drow-head h2 { color: #26330a; }
 :root[data-theme="white"] .dplan-item { background: #ffffff; }
+:root[data-theme="white"] .qchip { background: var(--field); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.06); color: var(--ink-2); }
+:root[data-theme="white"] .qchip:hover { background: var(--lime-soft); }
+:root[data-theme="white"] .qchip.on { background: var(--lime); color: var(--lime-ink); }
+:root[data-theme="white"] .fchip.fix { box-shadow: inset 0 0 0 1px #d3d4d8; color: var(--ink-2); }
+:root[data-theme="white"] .fchip.fix button { color: #5c7f0c; }
 :root[data-theme="white"] .gsearch { background: #ffffff; color: var(--muted); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.04); }
 :root[data-theme="white"] .gsearch:hover { color: var(--ink-2); }
 :root[data-theme="white"] .pal-box { border-bottom: 1px solid #e9eaec; }

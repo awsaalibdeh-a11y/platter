@@ -826,6 +826,18 @@ body.helper-open .dock { right: calc(min(25rem, 100vw - 2rem) + 2.2rem); }
   .cookrow .switch-wrap { margin-left: 0; }
 }
 
+/* ================= quick filters and "did you mean" ================= */
+.qfilters { display: flex; gap: 0.35rem; margin: 0 1rem 0.5rem; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; }
+.qfilters::-webkit-scrollbar { display: none; }
+.qchip { display: inline-flex; flex: none; align-items: center; gap: 0.3rem; height: 1.7rem; padding: 0 0.7rem 0 0.55rem; border: 0; border-radius: 999px; background: var(--field); box-shadow: inset 0 0 0 1px rgba(60, 50, 20, 0.06); color: var(--ink-2); font-size: 0.72rem; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.qchip .ic { width: 0.8rem; height: 0.8rem; stroke-width: 2; }
+.qchip:hover { background: var(--lime-soft); }
+.qchip.on { background: var(--lime); box-shadow: none; color: var(--lime-ink); }
+.qchip.on .ic { stroke-width: 2.6; }
+.fchip.fix { flex-wrap: wrap; height: auto; min-height: 1.5rem; padding: 0.2rem 0.6rem; background: transparent; box-shadow: inset 0 0 0 1px #dcd9cf; color: var(--ink-2); font-weight: 500; cursor: default; }
+.fchip.fix b { margin: 0 0.25rem; }
+.fchip.fix button { padding: 0; border: 0; background: none; color: #5c7f0c; font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
+
 /* ================= search everything, settings, jump bar, translation, welcome ================= */
 .side > .gsearch { width: auto; margin: 0 1.15rem 0.7rem; }
 .gsearch { display: flex; align-items: center; gap: 0.55rem; height: 2.25rem; padding: 0 0.45rem 0 0.75rem; border: 0; border-radius: 0.8rem; background: #fff; color: var(--muted); font-size: 0.82rem; font-weight: 500; text-align: left; cursor: pointer; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.04); }

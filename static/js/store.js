@@ -92,7 +92,7 @@
     dirty = false;
   };
   const ensure = () => dirty && rebuild();
-  const touch = () => { dirty = true; P.save(); P.emit("data"); };
+  const touch = () => { dirty = true; vocab = null; P.save(); P.emit("data"); };
 
   P.recipes = () => (ensure(), cache.list);
   P.recipe = (id) => (ensure(), cache.byId.get(id));
@@ -214,6 +214,58 @@
     if (!h) { h = `${r.title} ${r.sub || ""} ${r.dom || ""} ${r.ing.join(" ")}`.toLowerCase(); HAY.set(r, h); }
     return h;
   };
+  /* ---------- typos: "chiken" finds chicken ----------
+     Every word in the library (titles, cuisines, ingredients) with how often it appears. A search word that matches
+     nothing is swapped for the closest real word: one slip allowed in short words, two in long ones. */
+  let vocab = null;
+  const words = () => {
+    if (!vocab) {
+      vocab = new Map();
+      for (const r of P.recipes()) for (const w of hay(r).match(/[a-z\u00e0-\u024f]{3,}/g) || []) vocab.set(w, (vocab.get(w) || 0) + 1);
+    }
+    return vocab;
+  };
+  /** Edit distance (with swapped neighbours counting as one), giving up once it passes `max`. */
+  function distance(a, b, max) {
+    if (Math.abs(a.length - b.length) > max) return max + 1;
+    let prev2 = null, prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+    for (let i = 1; i <= a.length; i++) {
+      const cur = [i];
+      let best = i;
+      for (let j = 1; j <= b.length; j++) {
+        const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+        let v = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost);
+        if (prev2 && i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) v = Math.min(v, prev2[j - 2] + 1);
+        cur.push(v);
+        best = Math.min(best, v);
+      }
+      if (best > max) return max + 1;
+      prev2 = prev;
+      prev = cur;
+    }
+    return prev[b.length];
+  }
+  /** A search, with any word that matches nothing replaced by the closest real one: { q, fixes: [[typed, meant]] } */
+  P.fixQuery = (q) => {
+    const toks = (q || "").toLowerCase().split(/\s+/).filter(Boolean);
+    const vocabulary = words(), fixes = [];
+    const out = toks.map((t) => {
+      if (t.length < 4 || /[^a-z\u00e0-\u024f]/.test(t)) return t;
+      for (const w of vocabulary.keys()) if (w.includes(t)) return t;          // it already matches something
+      const max = t.length >= 7 ? 2 : 1;
+      let best = null;
+      for (const [w, n] of vocabulary) {
+        if (Math.abs(w.length - t.length) > max) continue;
+        const d = distance(t, w, max);
+        if (d <= max && (!best || d < best.d || (d === best.d && n > best.n))) best = { w, d, n };
+      }
+      if (!best) return t;
+      fixes.push([t, best.w]);
+      return best.w;
+    });
+    return { q: out.join(" "), fixes };
+  };
+
   P.search = (list, q) => {
     const toks = (q || "").toLowerCase().split(/\s+/).filter(Boolean);
     return toks.length ? list.filter((r) => { const h = hay(r); return toks.every((t) => h.includes(t)); }) : list;

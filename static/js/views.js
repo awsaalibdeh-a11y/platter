@@ -22,11 +22,11 @@
     for (const id of ["app", "side", "tiles", "list", "rows", "detail", "layer"]) els[id] = document.getElementById(id);
     Object.assign(els, {
       title: $("#list-title"), count: $("#list-count"), sortBtn: $("#sort-btn"), search: $("#search"),
-      clear: $("#search-clear"), filterRow: $("#filter-row"), top: $("#detail-top"), scroll: $("#detail-scroll"),
+      clear: $("#search-clear"), filterRow: $("#filter-row"), qfilters: $("#qfilters"), top: $("#detail-top"), scroll: $("#detail-scroll"),
       backTags: $("#back-tags"), backList: $("#back-list"), sideScrim: $("#side-scrim"),
     });
 
-    els.search.addEventListener("input", P.debounce(() => { state.q = els.search.value; els.clear.hidden = !state.q; renderList(); }, 70));
+    els.search.addEventListener("input", P.debounce(() => { state.q = els.search.value; state.exact = false; els.clear.hidden = !state.q; renderList(); }, 70));
     els.search.addEventListener("keydown", (e) => {
       if (e.key === "Escape" && els.search.value) { e.stopPropagation(); clearSearch(); }
       if (e.key === "ArrowDown") { e.preventDefault(); selectNeighbor(1); }
@@ -290,7 +290,8 @@
     if (f.easy) list = list.filter((r) => r.level === "Easy");
     if (f.quick) list = list.filter((r) => r.min && r.min <= 30);
     list = P.diet.filter(list);
-    list = P.search(list, state.q);
+    state.fix = state.q && !state.exact ? P.fixQuery(state.q) : null;          // "chiken" → chicken, unless they asked for exactly that
+    list = P.search(list, state.fix?.fixes.length ? state.fix.q : state.q);
     return P.keepsOrder(tag) ? list : P.sort(list, P.S.ui.sort);
   }
 
@@ -302,6 +303,7 @@
     els.sortBtn.classList.toggle("desc", P.S.ui.sort === "za");
     els.sortBtn.classList.toggle("filtered", anyFilter());
     renderFilterRow();
+    renderQuickFilters();
     // the first screenful (and the open recipe) at once; the rest follows in batches, so a list of 1,100 appears instantly
     const selected = list.findIndex((r) => r.id === P.route.id);
     const first = Math.max(60, selected + 20);
@@ -323,15 +325,33 @@
     if (next < list.length) setTimeout(more, 0);
   }
 
+  /* the filters most people want, always one tap away under the search box */
+  const QUICK = [
+    ["quick", "Under 30 min", "clock", (f) => f.quick, (f) => { f.quick = !f.quick; }],
+    ["easy", "Easy", "bars", (f) => f.easy, (f) => { f.easy = !f.easy; }],
+    ["veg", "Vegetarian", "leaf", (f) => f.diet === "vegetarian", (f) => { f.diet = f.diet === "vegetarian" ? "" : "vegetarian"; }],
+    ["fav", "Favorites", "star", (f) => f.fav, (f) => { f.fav = !f.fav; }],
+    ["cheap", "Cheapest", "coins", () => P.S.ui.sort === "cheap", () => { P.S.ui.sort = P.S.ui.sort === "cheap" ? "az" : "cheap"; P.save(); }],
+    ["video", "With video", "play", (f) => f.video, (f) => { f.video = !f.video; }],
+  ];
+  function renderQuickFilters() {
+    if (!els.qfilters) return;                                     // an older page without the chip row: nothing to draw
+    const f = state.filters;
+    els.qfilters.replaceChildren(...QUICK.filter(([k]) => (k !== "cheap" || P.prices.show()) && (k !== "fav" || P.route.tag !== "fav")).map(([k, label, ic, on, flip]) => {
+      const active = on(f);
+      return h("button", { class: "qchip" + (active ? " on" : ""), type: "button", "aria-pressed": String(active), onClick: () => { flip(f); renderList(); } }, hi(active ? "check" : ic), label);
+    }));
+  }
+
   function renderFilterRow() {
     const f = state.filters, chips = [];
     const chip = (label, fn) => h("button", { class: "fchip", type: "button", "aria-label": `Remove filter ${label}`, onClick: () => { fn(); renderList(); } }, label, hi("x"));
     if (f.sub) chips.push(chip(f.sub, () => (f.sub = "")));
-    if (f.fav) chips.push(chip("Favorites", () => (f.fav = false)));
-    if (f.video) chips.push(chip("With video", () => (f.video = false)));
-    if (f.diet) chips.push(chip(DIETS[f.diet] || f.diet, () => (f.diet = "")));
-    if (f.easy) chips.push(chip("Easy", () => (f.easy = false)));
-    if (f.quick) chips.push(chip("Under 30 min", () => (f.quick = false)));
+    if (f.diet && f.diet !== "vegetarian") chips.push(chip(DIETS[f.diet] || f.diet, () => (f.diet = "")));     // the rest have a quick chip
+    if (state.fix?.fixes.length) {
+      chips.push(h("span", { class: "fchip fix" }, hi("sparkle"), "Showing results for ", h("b", {}, state.fix.q),
+        h("button", { type: "button", title: `Search for exactly “${state.q}”`, onClick: () => { state.exact = true; renderList(); } }, `search “${state.q}” instead`)));
+    }
     if (P.diet.active()) chips.push(h("button", { class: "fchip diet", type: "button", title: `Your diet: ${P.diet.summary()}. Tap to show everything.`, onClick: () => { P.diet.setOn(false); P.toast("Showing every recipe. Turn “Fits my diet” back on from the sort menu."); } }, hi("leaf"), "Fits my diet", hi("x")));
     if (state.q && P.route.tag !== "all") {
       // the search box is scoped to the tag you are in; say so when the rest of the library has more

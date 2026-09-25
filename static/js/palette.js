@@ -47,7 +47,8 @@
   }
 
   function results(query) {
-    const q = norm(query.trim());
+    const fixed = P.fixQuery(query.trim());                    // "chiken" still finds chicken
+    const q = norm(fixed.q);
     const toks = q.split(/\s+/).filter(Boolean);
     if (!q) {
       const recent = P.S.recent.map((id) => P.recipe(id)).filter(Boolean).slice(0, 5);
