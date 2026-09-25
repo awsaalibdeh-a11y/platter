@@ -20,10 +20,20 @@
       case "n": P.views.add(); break;
       case "a": P.views.openAI(); break;
       case "s": P.views.openShop(); break;
+      case "p": P.views.openPantry(); break;
+      case "m": P.views.openPlan(); break;
+      case "r": P.views.surprise(); break;
       case "[": P.views.toggleSidebar(); break;
       default:
     }
   });
+
+  // offline: once it has loaded, the app and the library are kept on the device (see static/sw.js)
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) {
+    addEventListener("load", () => navigator.serviceWorker.register(`/sw.js?v=${window.PLATTER.v}`).catch(() => {}));
+  }
+  addEventListener("offline", () => P.toast("You're offline. Your recipes still work; photos and AI need a connection.", { ms: 4200 }));
+  addEventListener("online", () => P.toast("Back online."));
 
   (async () => {
     P.hydrateIcons();

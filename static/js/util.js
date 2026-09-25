@@ -70,6 +70,10 @@
     sparkle: '<path d="M11 3.6l1.9 5.1 5.1 1.9-5.1 1.9L11 17.6l-1.9-5.1L4 10.6l5.1-1.9L11 3.6z"/><path d="M18.4 14.6l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z"/>',
     cart: '<circle cx="9.5" cy="19.6" r="1.4"/><circle cx="17.5" cy="19.6" r="1.4"/><path d="M2.8 4h2.6l2.2 10.9a1.7 1.7 0 0 0 1.7 1.4h7.6a1.7 1.7 0 0 0 1.7-1.3L20.6 8H6.2"/>',
     basket: '<path d="M4 9.5h16l-1.6 9a1.8 1.8 0 0 1-1.8 1.5H7.4a1.8 1.8 0 0 1-1.8-1.5L4 9.5z"/><path d="M8 9.5l3-5.5M16 9.5l-3-5.5"/>',
+    calendar: '<rect x="3.6" y="5" width="16.8" height="15.2" rx="3"/><path d="M8 3.2v3.6M16 3.2v3.6M3.8 10h16.4"/>',
+    shuffle: '<path d="M3.5 7.5h3.4c1.7 0 3 .8 3.9 2.3l2.4 4.4c.9 1.5 2.2 2.3 3.9 2.3h3.4"/><path d="M3.5 16.5h3.4c1.1 0 2.1-.4 2.8-1.1M13.4 8.7c.8-.8 1.7-1.2 2.8-1.2h4.3"/><path d="M18 5l2.5 2.5L18 10M18 14l2.5 2.5L18 19"/>',
+    jar: '<path d="M8 3.6h8v2.3H8z"/><path d="M7 5.9h10v12.9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V5.9z"/><path d="M7 10.6h10M7 15h10"/>',
+    chefHat: '<path d="M7.6 16.6a3.9 3.9 0 0 1-.9-7.6 4.4 4.4 0 0 1 8.6-.5 3.9 3.9 0 0 1 1 8.1"/><path d="M7.6 14.6v5.2h8.8v-5.2M7.6 17.4h8.8"/>',
   };
   P.icon = (name, cls = "") =>
     `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ""}</svg>`;
@@ -88,11 +92,22 @@
     try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return ""; }
   };
   P.plural = (n, one, many) => `${n} ${n === 1 ? one : many || one + "s"}`;
+  /** "today", "yesterday", "3 days ago", then a date. */
+  P.ago = (ts) => {
+    const days = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(ts).setHours(0, 0, 0, 0)) / 864e5);
+    if (days <= 0) return "today";
+    if (days === 1) return "yesterday";
+    if (days < 7) return `${days} days ago`;
+    return new Date(ts).toLocaleDateString(undefined, { month: "short", day: "numeric", ...(days > 300 ? { year: "numeric" } : {}) });
+  };
 
-  /** Route a themealdb photo to the size that fits the surface; anything else passes through. */
+  /** Route a photo to the size that fits the surface. TheMealDB and Wikimedia both resize on request; anything else passes through. */
   P.photo = (url, size) => {
-    if (!url) return "";
-    return /themealdb\.com\/images\/media\/meals\//.test(url) && size ? `${url}/${size}` : url;
+    if (!url || !size) return url || "";
+    if (/themealdb\.com\/images\/media\/meals\//.test(url)) return `${url}/${size}`;
+    // Wikimedia only makes thumbnails at its standard widths (250, 500, 960 …), so ask for one of those
+    const w = { small: 250, medium: 500, large: 960 }[size];
+    return w ? url.replace(/^(https:\/\/(?:upload|thumb)\.wikimedia\.org\/wikipedia\/[^/]+\/thumb\/.+\/)\d+(px-[^/]+)$/, `$1${w}$2`) : url;
   };
 
   /* ---------- quantities: "1 1/2 cups flour" ⇄ {q, unit, rest} ---------- */
@@ -169,16 +184,87 @@
   P.units = UNIT;
   P.panes = {};                                   // the modules that draw a whole pane register here
 
+  /* ---------- US ⇄ metric ----------
+     "metric" turns cups, ounces and pounds into ml and g; "us" turns g, kg and ml into ounces, pounds and cups.
+     Teaspoons, tablespoons and counts ("2 cloves") stay as they are: every kitchen uses them. */
+  const TO_METRIC = {
+    cup: ["ml", 240], pint: ["ml", 473], quart: ["ml", 946], gallon: ["ml", 3785],
+    ounce: ["g", 28.35], oz: ["g", 28.35], pound: ["g", 453.6], lb: ["g", 453.6], lbs: ["g", 453.6], stick: ["g", 113],
+  };
+  const TO_US = { ml: ["ml", 1], cl: ["ml", 10], dl: ["ml", 100], l: ["ml", 1000], litre: ["ml", 1000], liter: ["ml", 1000], g: ["g", 1], kg: ["g", 1000] };
+  const step = (v, s) => Math.round(v / s) * s;
+  const CUP_FRACS = [[0.25, "¼"], [1 / 3, "⅓"], [0.5, "½"], [2 / 3, "⅔"], [0.75, "¾"], [1, "1"]];
+
+  /** A metric amount as people write it: 240 ml, 450 g, 1.4 l. */
+  const metricOut = (fam, v) => {
+    const round = fam === "ml" ? (v < 100 ? step(v, 5) : step(v, 10)) : (v < 400 ? step(v, 5) : step(v, 25));
+    if (round >= 1000) { const n = step(round, 50) / 1000; return { n, text: String(n), unit: fam === "ml" ? "l" : "kg", tight: true }; }
+    return { n: round, text: String(round), unit: fam, tight: true };
+  };
+  /** A US amount as a recipe card writes it, from millilitres or grams. Null when it would read strangely (5 g of yeast). */
+  const usOut = (fam, v) => {
+    const as = (n, unit) => ({ n, text: fmt(n), unit, tight: false });
+    if (fam === "g") {
+      if (v < 15) return null;
+      if (v >= 340) return as(step(v / 453.6, 0.25), "lb");
+      const oz = v / 28.35;
+      return as(oz < 3 ? step(oz, 0.25) : step(oz, 0.5), "oz");
+    }
+    if (v < 12) return as(Math.max(0.25, step(v / 4.93, 0.25)), "tsp");
+    if (v < 55) return as(Math.max(0.5, step(v / 14.79, 0.5)), "tbsp");
+    const c = v / 240;
+    if (c >= 4) return as(step(c / 4, 0.25), "qt");                 // a litre of stock is "1 qt", not "4 ¼ cups"
+    if (c >= 1) return as(step(c, 0.25), "cup");
+    const near = CUP_FRACS.find(([f]) => Math.abs(c - f) <= 0.06);
+    return near ? as(near[0], "cup") : as(Math.max(0.5, step(v / 14.79, 0.5)), "tbsp");
+  };
+
+  /** One converted quantity, or null when this line has nothing to convert. */
+  const convertQty = (p, q, q2, mode) => {
+    const key = p.unit.one;
+    let fam, per;
+    if (mode === "metric" && TO_METRIC[key]) {
+      if (key === "stick" && !/^(?:butter|margarine)\b/i.test(p.rest)) return null;      // a cinnamon stick is not 113 g
+      [fam, per] = TO_METRIC[key];
+    } else if (mode === "us" && TO_US[key]) [fam, per] = TO_US[key];
+    else return null;
+    const out = (v) => (mode === "metric" ? metricOut(fam, v) : usOut(fam, v));
+    const a = out(q * per), b = q2 == null ? null : out(q2 * per);
+    if (!a || (q2 != null && (!b || b.unit !== a.unit))) return null;
+    const unit = a.unit === "cup" && (b ?? a).n > 1.0001 ? "cups" : a.unit;
+    return { qty: a.text + (b ? `–${b.text}` : ""), unit, tight: a.tight };
+  };
+
+  const unitMode = () => (P.unitMode ? P.unitMode() : "orig");
+
+  /** Oven and meat temperatures inside a sentence: 425°F ⇄ 220°C. Left alone when the text already gives both. */
+  const TEMP = /(\d{2,3})\s*(?:°|º|˚)?\s*(?:degrees?\s*)?(F(?:ahrenheit)?|C(?:elsius)?)\b/g;
+  P.convertText = (text, mode = unitMode()) => {
+    if (mode === "orig" || !text) return text;
+    const units = new Set([...text.matchAll(TEMP)].map((m) => m[2][0]));
+    if (units.size !== 1) return text;
+    return text.replace(TEMP, (all, n, u) => {
+      n = +n;
+      if (u[0] === "F" && mode === "metric") { const c = (n - 32) * 5 / 9; return `${c >= 150 ? step(c, 10) : step(c, 5)}°C`; }
+      if (u[0] === "C" && mode === "us") { const f = n * 9 / 5 + 32; return `${f >= 300 ? step(f, 25) : step(f, 5)}°F`; }
+      return all;
+    });
+  };
+
   /** Scale a printed ingredient line by `factor`; lines without a leading quantity pass through. */
-  P.scaleLine = (line, factor = 1) => {
+  P.scaleLine = (line, factor = 1, mode = unitMode()) => {
     const p = parse(line);
-    if (!p) return line;
+    if (!p) return P.convertText(line, mode);
     let q = p.q * factor, q2 = p.q2 == null ? null : p.q2 * factor;
     if (!p.unit && !p.tight && factor !== 1) {
       // a count of things: nobody wants 4 ⅔ chicken thighs
       const tidy = (v) => (v >= 3 ? Math.round(v) : v >= 2 ? Math.round(v * 2) / 2 : v);
       q = tidy(q);
       if (q2 != null) q2 = tidy(q2);
+    }
+    if (mode !== "orig" && p.unit) {
+      const c = convertQty(p, q, q2, mode);
+      if (c) return c.qty + (c.tight ? "" : " ") + c.unit + (p.rest ? " " + p.rest : "");
     }
     const many = (q2 ?? q) > 1.0001;
     const unit = p.unit ? (many ? p.unit.many : p.unit.one) : "";
@@ -204,7 +290,8 @@
       ...r.ing.map((l) => `- ${P.scaleLine(l, f)}`),
       "",
       "DIRECTIONS",
-      ...r.steps.map((s, i) => `${i + 1}. ${s}`),
+      ...r.steps.map((s, i) => `${i + 1}. ${P.convertText(s)}`),
+      r.tip ? `\nTip: ${r.tip}` : "",
       r.src ? `\nSource: ${r.src}` : "",
     ].join("\n").trim();
   };
@@ -213,13 +300,14 @@
   P.guessTag = (title = "", category = "", ing = []) => {
     const t = `${title} ${category}`.toLowerCase();
     const all = `${t} ${ing.join(" ")}`.toLowerCase();
+    if (/\b(chicken|hen)\b/.test(t)) return "chicken";               // as in the library: a chicken soup is a chicken dish
+    if (/\b(turkey|duck|goose|quail)\b/.test(t)) return "poultry";
     if (/\b(soup|chowder|bisque|broth|stew)\b/.test(t)) return "soup";
     if (/\b(salad|slaw)\b/.test(t)) return "salad";
     if (/\b(pasta|spaghetti|noodle|ramen|lasagn|macaroni|penne|linguine|fettuccine|pad thai)\b/.test(t)) return "pasta";
     if (/\b(dessert|cake|cookie|brownie|pie|tart|pudding|ice cream|cupcake|muffin|fudge|cheesecake)\b/.test(t)) return "desserts";
     if (/\b(breakfast|pancake|waffle|omelet|omelette|granola|oatmeal|french toast)\b/.test(t)) return "breakfast";
     if (/\b(appetizer|starter|dip|hummus|bruschetta|nachos|canap)/.test(t)) return "appetizers";
-    if (/\b(chicken|turkey|duck)\b/.test(t)) return "poultry";
     if (/\b(beef|steak|brisket|burger|meatball|meatloaf)\b/.test(t)) return "beef";
     if (/\b(salmon|shrimp|prawn|fish|tuna|cod|crab|lobster|scallop|seafood)\b/.test(t)) return "seafood";
     if (/\b(pork|bacon|ham|sausage|ribs)\b/.test(t)) return "pork";

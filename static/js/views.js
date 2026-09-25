@@ -3,11 +3,11 @@
   const P = window.P;
   const { h, $, icon } = P;
   const hi = (name) => h("span", { class: "ic-wrap", html: icon(name) });
-  const DEFAULT = { tag: "poultry", id: "52772" };          // the first thing a new visitor sees
+  const DEFAULT = { tag: "chicken", id: "52772" };          // the first thing a new visitor sees
 
   const els = {};
   const state = {
-    q: "", filters: { sub: "", fav: false, video: false },
+    q: "", carryQ: "", filters: { sub: "", fav: false, video: false },
     editingTiles: false, drawer: false, cook: false, muteData: false,
     shown: [], rendered: {},
   };
@@ -49,6 +49,10 @@
     P.on("layout", onLayout);
     P.on("fav", onFav);
     P.on("shop", onShop);
+    P.on("rate", onCook);
+    P.on("made", onCook);
+    P.on("plan", () => P.route.mode === "plan" && renderDetail());
+    P.on("units", () => P.route.mode === "view" && P.route.id && renderDetail());
     P.on("scale", (id) => id === P.route.id && refreshScale());
     // a photo that fails to load falls back to the soft placeholder instead of a broken icon
     document.addEventListener("error", (e) => {
@@ -181,14 +185,22 @@
       const favCount = Object.keys(P.S.fav).filter((id) => P.recipe(id)).length;
       const hidden = P.tags({ hidden: true }).filter((t) => P.S.tags.hidden[t.id]);
       const nav = (fn) => () => { close(); if (P.isMedium()) { state.drawer = false; syncSide(); } fn(); };
+      const coll = (label, icon, id) => P.menuItem({ label, icon, count: P.inTag(id).length, on: P.route.tag === id && P.route.mode === "view", onClick: go(id) });
       return [
         P.menuItem({ label: "Ask AI what to cook", icon: "sparkle", on: P.route.mode === "ai", onClick: nav(() => openAI()) }),
+        P.menuItem({ label: "What can I make?", sub: "Rank recipes by what's in your kitchen", icon: "jar", on: P.route.mode === "pantry", onClick: nav(openPantry) }),
+        P.menuItem({ label: "Meal plan", sub: "Plan the week, shop for it in one tap", icon: "calendar", count: P.plan.upcoming() || undefined, on: P.route.mode === "plan", onClick: nav(openPlan) }),
         P.menuItem({ label: "Shopping list", icon: "cart", count: P.shop.count() || undefined, on: P.route.mode === "shop", onClick: nav(openShop) }),
         h("div", { class: "pop-sep" }),
         h("div", { class: "pop-h" }, "Collections"),
         P.menuItem({ label: "All recipes", icon: "book", count: P.recipes().length, on: P.route.tag === "all", onClick: go("all") }),
         P.menuItem({ label: "Favorites", icon: "star", count: favCount, on: P.route.tag === "fav", onClick: go("fav") }),
         P.menuItem({ label: "Recently viewed", icon: "clockArrow", count: P.S.recent.filter((i) => P.recipe(i)).length, on: P.route.tag === "recent", onClick: go("recent") }),
+        coll("Top rated", "star", "top"),
+        coll("Cooked before", "chefHat", "made"),
+        coll("Under 30 minutes", "clock", "quick"),
+        h("div", { class: "pop-sep" }),
+        P.menuItem({ label: "Surprise me", sub: "Open a random recipe", icon: "shuffle", onClick: nav(surprise) }),
         hidden.length ? [
           h("div", { class: "pop-sep" }), h("div", { class: "pop-h" }, "Hidden tags"),
           ...hidden.map((t) => P.menuItem({ label: `Show ${t.name}`, icon: "plus", onClick: () => { P.showTag(t.id); close(); } })),
@@ -220,7 +232,7 @@
   }
 
   function sortMenu(anchor) {
-    const sorts = [["az", "Title A–Z"], ["za", "Title Z–A"], ["new", "Newest first"], ["quick", "Quickest first"], ["fav", "Favorites first"]];
+    const sorts = [["az", "Title A–Z"], ["za", "Title Z–A"], ["new", "Newest first"], ["quick", "Quickest first"], ["fav", "Favorites first"], ["rating", "Top rated first"], ["cooked", "Most cooked first"]];
     const subs = [...new Set(P.inTag(P.route.tag).map((r) => r.sub).filter(Boolean))].sort();
     P.popover(anchor, (close) => [
       h("div", { class: "pop-h" }, "Sort by"),
@@ -247,7 +259,7 @@
     if (f.fav && tag !== "fav") list = list.filter((r) => P.isFav(r.id));
     if (f.video) list = list.filter((r) => r.video);
     list = P.search(list, state.q);
-    return tag === "recent" ? list : P.sort(list, P.S.ui.sort);
+    return P.keepsOrder(tag) ? list : P.sort(list, P.S.ui.sort);
   }
 
   function renderList() {
@@ -271,8 +283,19 @@
     if (f.sub) chips.push(chip(f.sub, () => (f.sub = "")));
     if (f.fav) chips.push(chip("Favorites", () => (f.fav = false)));
     if (f.video) chips.push(chip("With video", () => (f.video = false)));
+    if (state.q && P.route.tag !== "all") {
+      // the search box is scoped to the tag you are in; say so when the rest of the library has more
+      const have = new Set(state.shown.map((r) => r.id));
+      const more = P.search(P.recipes(), state.q).filter((r) => !have.has(r.id)).length;
+      if (more) chips.push(h("button", { class: "fchip more", type: "button", title: "Search every tag", onClick: searchAll }, hi("search"), `${more} more in All recipes`));
+    }
     els.filterRow.replaceChildren(...chips);
     els.filterRow.hidden = !chips.length;
+  }
+
+  function searchAll() {
+    state.carryQ = state.q;                                   // the tag changes, and a tag change would clear the box
+    P.go(P.pathFor({ tag: "all" }));
   }
 
   const thumbEl = (r, size) =>
@@ -297,7 +320,11 @@
         state.q ? h("button", { class: "btn lime sm", type: "button", onClick: () => openAI(state.q) }, hi("sparkle"), "Ask AI to make it") : null,
         h("button", { class: "btn ghost sm", type: "button", onClick: () => { clearSearch(); state.filters = noFilters(); renderList(); } }, "Clear search and filters"));
     }
-    const msg = { fav: "Tap the star on a recipe to keep it here.", recent: "Recipes you open show up here." }[tag];
+    const msg = {
+      fav: "Tap the star on a recipe to keep it here.", recent: "Recipes you open show up here.",
+      top: "Give a recipe four or five stars and it lands here.", made: "Tap “I made this” on a recipe to keep track of what you've cooked.",
+      quick: "No recipe here takes 30 minutes or less.",
+    }[tag];
     return h("div", { class: "empty" }, h("p", {}, msg || "No recipes in this tag yet."),
       msg ? null : h("button", { class: "btn lime sm", type: "button", onClick: newRecipe }, hi("plus"), "Add a recipe"));
   }
@@ -346,7 +373,7 @@
     const keep = same ? els.scroll.scrollTop : 0;
     els.detail.classList.toggle("editing", mode !== "view");
     if (mode === "new") renderEditor(null);
-    else if (mode === "ai" || mode === "shop") {
+    else if (P.PANES.includes(mode)) {
       els.detail.classList.remove("cook");
       P.panes[mode](els.top, els.scroll, { close: closePane });
     } else {
@@ -372,6 +399,7 @@
     els.top.replaceChildren(
       h("button", { class: "tagpill", type: "button", title: `Show ${P.tagName(r.tag)}`, onClick: () => P.go(P.pathFor({ tag: r.tag, id: r.id })) }, P.tagName(r.tag)),
       h("div", { class: "acts" },
+        actBtn("calendar", "Add to meal plan", (e) => P.plan.menu(e.currentTarget, r)),
         actBtn("printer", "Print", () => window.print()),
         actBtn("share", "Share", () => shareRecipe(r)),
         actBtn("copy", "Copy recipe", () => copyRecipe(r)),
@@ -396,15 +424,48 @@
     return h("div", { class: "recipe" },
       h("h1", { class: "title" }, r.title),
       chipsEl(r, servings),
+      cookRowEl(r),
       h("div", { class: "cols" },
         h("section", { class: "col-ing" + (anyTicked ? " has-checks" : "") },
           h("div", { class: "sec-head" }, h("h2", { class: "section-h" }, "Ingredients"),
             h("button", { class: "linkbtn", type: "button", onClick: () => { P.clearChecks(r.id); renderDetail(); } }, "Uncheck all")),
-          scalerEl(r, servings), ingredientsEl(r, f), shopBarEl(r, f)),
+          h("div", { class: "ing-tools" }, scalerEl(r, servings), unitsEl()), ingredientsEl(r, f), shopBarEl(r, f)),
         h("section", { class: "col-steps" },
           h("div", { class: "sec-head" }, h("h2", { class: "section-h" }, "Directions"),
             h("button", { class: "linkbtn", type: "button", onClick: () => { P.clearSteps(r.id); renderDetail(); } }, "Start over")),
-          stepsEl(r), notesEl(r))));
+          stepsEl(r),
+          r.tip ? h("div", { class: "tip" }, h("span", { class: "tip-h" }, hi("chefHat"), "Tip"), h("p", {}, r.tip)) : null,
+          notesEl(r))));
+  }
+
+  /** Your star rating, and how often you have cooked it. */
+  function cookRowEl(r) {
+    const cur = P.rating(r.id), times = P.madeTimes(r.id);
+    const stars = h("div", { class: "rating", role: "radiogroup", "aria-label": "Your rating" },
+      [1, 2, 3, 4, 5].map((n) => h("button", {
+        class: "rstar" + (n <= cur ? " on" : ""), type: "button", role: "radio", "aria-checked": String(n === cur),
+        "aria-label": `${n} ${n === 1 ? "star" : "stars"}`, title: n === cur ? "Clear your rating" : `${n} of 5`, html: icon("star"), onClick: () => P.setRating(r.id, n),
+      })));
+    const made = h("button", {
+      class: "madebtn", type: "button", title: "Log that you cooked this",
+      onClick: () => { const undo = P.markMade(r.id); P.toast(`Logged. That's ${P.plural(P.madeTimes(r.id).length, "time")} you've made it.`, { action: { label: "Undo", fn: undo } }); },
+    }, hi("check"), "I made this");
+    return h("div", { class: "cookrow", "data-role": "cookrow" }, stars, made,
+      times.length ? h("span", { class: "made-note" }, `Made ${times.length === 1 ? "once" : `${times.length}×`} · last ${P.ago(P.lastMade(r.id))}`) : null);
+  }
+
+  /** A rating or a cooked-it changed: redo just that row, and the list when it is sorted or filtered by it. */
+  function onCook(id) {
+    const r = P.route.mode === "view" && P.recipe(P.route.id);
+    if (r && id === r.id) els.scroll.querySelector('[data-role="cookrow"]')?.replaceWith(cookRowEl(r));
+    if (["rating", "cooked"].includes(P.S.ui.sort) || ["top", "made"].includes(P.route.tag)) renderList();
+  }
+
+  function unitsEl() {
+    const mode = P.unitMode();
+    return h("div", { class: "seg", role: "group", "aria-label": "Units" },
+      [["orig", "As written"], ["us", "US"], ["metric", "Metric"]].map(([k, label]) =>
+        h("button", { type: "button", class: mode === k ? "on" : "", "aria-pressed": String(mode === k), onClick: () => P.setUnitMode(k) }, label)));
   }
 
   function chipsEl(r, servings) {
@@ -497,7 +558,7 @@
       const timers = P.cook.findTimers(text);
       const li = h("li", { class: "step", role: "checkbox", tabindex: "0", "aria-checked": String(done.has(i)) },
         h("span", { class: "step-n" }, String(i + 1)),
-        h("div", { class: "step-main" }, h("p", {}, text),
+        h("div", { class: "step-main" }, h("p", {}, P.convertText(text)),
           timers.length ? h("div", { class: "step-timers" }, timers.map((t) =>
             h("button", { class: "timer-chip", type: "button", title: `Start a ${t.label} timer`, onClick: (e) => { e.stopPropagation(); P.cook.start(t.seconds, `Step ${i + 1}`); } }, hi("timer"), t.label))) : null));
       const flip = () => { P.toggleStep(r.id, i); mark(); };
@@ -691,6 +752,18 @@
   /* ================= Ask AI, the shopping list, and getting back out of them ================= */
   const openAI = (prefill) => { if (prefill) P.ai.prefill(prefill); P.go("ai"); };
   const openShop = () => P.go("shop");
+  const openPlan = () => P.go("plan");
+  const openPantry = () => P.go("pantry");
+
+  /** Open a random recipe: from the tag you are in, or from everything when you are not in one. */
+  function surprise() {
+    const inTag = realTag() && state.shown.length ? realTag() : null;
+    const pool = inTag ? state.shown : P.recipes();
+    const pick = pool[Math.floor(Math.random() * pool.length)];
+    if (!pick) return;
+    P.go(P.pathFor({ tag: inTag || "all", id: pick.id }));
+    P.toast("How about this one?", { action: { label: "Another", fn: surprise } });
+  }
 
   function closePane() {
     const b = state.before;
@@ -737,14 +810,14 @@
     const raw = P.parseRoute(), narrow = P.isNarrow();
     if (raw.home && !narrow) {
       const last = P.S.ui.last || {};
-      const tag = P.validTag(last.tag) ? last.tag : DEFAULT.tag;
+      const tag = P.validTag(last.tag) ? last.tag : P.validTag(DEFAULT.tag) ? DEFAULT.tag : "all";     // never redirect to a tag that would bounce back here
       const id = P.recipe(last.id) && last.tag === tag ? last.id : (tag === DEFAULT.tag && P.recipe(DEFAULT.id) ? DEFAULT.id : null);
       return P.go(P.pathFor({ tag, id }), { replace: true });
     }
     if (raw.home) {
       const last = P.S.ui.last || {};
-      P.route = { tag: P.validTag(last.tag) ? last.tag : DEFAULT.tag, id: null, mode: "view", home: true };
-    } else if (raw.mode === "new" || raw.mode === "ai" || raw.mode === "shop") {
+      P.route = { tag: P.validTag(last.tag) ? last.tag : P.validTag(DEFAULT.tag) ? DEFAULT.tag : "all", id: null, mode: "view", home: true };
+    } else if (raw.mode === "new" || P.PANES.includes(raw.mode)) {
       // these panes borrow the list on the left for context, so they keep the tag you were in
       P.route = { tag: P.validTag(raw.tag) ? raw.tag : P.validTag(P.route.tag) ? P.route.tag : DEFAULT.tag, id: null, mode: raw.mode, home: false };
     } else {
@@ -757,7 +830,12 @@
     const prev = state.rendered;
     if (mode !== "view" && prev.built && prev.mode === "view" && prev.tag) state.before = { tag: prev.tag, id: prev.id };   // where Close returns to
     const tagChanged = prev.tag !== tag;
-    if (tagChanged) { state.q = ""; els.search.value = ""; els.clear.hidden = true; state.filters = noFilters(); }
+    if (tagChanged) {
+      // "search all recipes" brings the words along. Not cleared here: this pass can end early, redirecting to the
+      // first recipe, and the tag change is then seen a second time. It is cleared once a pass completes, below.
+      state.q = state.carryQ;
+      els.search.value = state.q; els.clear.hidden = !state.q; state.filters = noFilters();
+    }
     if (tagChanged || !prev.built) renderList();
 
     // on a wide screen a tag always has a recipe open, like the iPad layout
@@ -770,6 +848,7 @@
     syncTiles();
     if (!prev.built || prev.id !== id || prev.mode !== mode) renderDetail();
     state.rendered = { tag, id, mode, built: true };
+    state.carryQ = "";
     if (mode === "view" && !P.route.home) {
       if (id) P.touchRecent(id);
       P.S.ui.last = { tag, id: id || null };
@@ -778,7 +857,7 @@
     if (P.isMedium()) { state.drawer = false; syncSide(); }
     syncNav();
     const r = id && P.recipe(id);
-    document.title = `${{ new: "New recipe", ai: "Ask AI", shop: "Shopping list" }[mode] || (r ? r.title : P.tagName(tag))} · Platter`;
+    document.title = `${{ new: "New recipe", ai: "Ask AI", shop: "Shopping list", plan: "Meal plan", pantry: "What can I make?" }[mode] || (r ? r.title : P.tagName(tag))} · Platter`;
   }
 
   function onData() {
@@ -831,5 +910,8 @@
     cookOn: () => state.cook,
     openAI,
     openShop,
+    openPlan,
+    openPantry,
+    surprise,
   });
 })();

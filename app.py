@@ -79,7 +79,7 @@ def static_files(filename):
 
 def _asset_version():
     """Changes whenever a shipped file does, so the browser can cache every asset forever."""
-    files = ["static/style.css", "static/data/library.json"]
+    files = ["static/style.css", "static/data/library.json", "static/sw.js"]
     files += [f"static/js/{n}" for n in os.listdir(os.path.join(BASE, "static", "js"))]
     return str(int(max(os.path.getmtime(os.path.join(BASE, f)) for f in files)))
 
@@ -107,6 +107,16 @@ def healthz():
     return "ok"
 
 
+@app.route("/sw.js")
+def service_worker():
+    """The service worker has to be served from the root to control the whole app, and must never be cached hard."""
+    with open(os.path.join(STATIC, "sw.js"), "rb") as fh:
+        resp = Response(fh.read(), mimetype="text/javascript")
+    resp.headers["Cache-Control"] = "no-cache"
+    resp.headers["Service-Worker-Allowed"] = "/"
+    return resp
+
+
 @app.route("/manifest.webmanifest")
 def manifest():
     body = {
@@ -118,6 +128,11 @@ def manifest():
         "display": "standalone",
         "background_color": "#fafaf8",
         "theme_color": "#fafaf8",
+        "shortcuts": [                       # long-press the installed icon
+            {"name": "Meal plan", "url": "/#/plan"},
+            {"name": "What can I make?", "url": "/#/pantry"},
+            {"name": "Shopping list", "url": "/#/shop"},
+        ],
         "icons": [
             {"src": "/static/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
             {"src": "/static/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"},

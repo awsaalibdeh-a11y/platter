@@ -15,10 +15,11 @@
   /* ---------- persisted state ---------- */
   const blank = () => ({
     fav: {}, user: {}, edits: {}, gone: {}, checks: {}, scale: {}, notes: {}, steps: {},
+    rate: {}, made: {}, plan: {}, pantry: { have: [], staples: true },
     tags: { order: [], names: {}, covers: {}, hidden: {}, custom: [] },
     shop: { recipes: [], extra: [], done: {}, hidden: {} },
     recent: [],
-    ui: { sidebar: true, sort: "az", last: null },
+    ui: { sidebar: true, sort: "az", last: null, units: "orig" },
   });
   const merge = (base, extra) => {
     for (const k of Object.keys(extra || {})) {
@@ -88,12 +89,29 @@
   P.tags = ({ hidden = false } = {}) => {
     const base = P.lib.seedTags.map((t) => ({ id: t.id, name: t.name, cover: t.cover }));
     const custom = S.tags.custom.map((t) => ({ id: t.id, name: t.name, custom: true }));
-    const all = [...base, ...custom].map((t, i) => ({ ...t, name: S.tags.names[t.id] || t.name, _i: i }));
-    const pos = (t) => { const p = S.tags.order.indexOf(t.id); return p >= 0 ? p : 1000 + t._i; };
-    all.sort((a, b) => pos(a) - pos(b));
+    let all = [...base, ...custom].map((t, i) => ({ ...t, name: S.tags.names[t.id] || t.name, _i: i }));
+    const order = S.tags.order;
+    if (order.length) {
+      // a saved order only knows the tags that existed when it was saved. A tag the app has added since
+      // (Chicken, say) goes right after the tag that precedes it in the app's own order, not at the very end.
+      const out = all.filter((t) => order.includes(t.id)).sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id));
+      for (const t of all) {
+        if (order.includes(t.id)) continue;
+        let at = out.length;
+        if (!t.custom) {
+          at = 0;
+          for (let i = t._i - 1; i >= 0; i--) {
+            const j = out.findIndex((x) => x._i === i);
+            if (j >= 0) { at = j + 1; break; }
+          }
+        }
+        out.splice(at, 0, t);
+      }
+      all = out;
+    }
     return hidden ? all : all.filter((t) => !S.tags.hidden[t.id]);
   };
-  const SPECIAL = { all: "All recipes", fav: "Favorites", recent: "Recently viewed" };
+  const SPECIAL = { all: "All recipes", fav: "Favorites", recent: "Recently viewed", top: "Top rated", made: "Cooked before", quick: "Under 30 minutes" };
   P.isSpecial = (id) => id in SPECIAL;
   P.validTag = (id) => !!id && (id in SPECIAL || P.tags({ hidden: true }).some((t) => t.id === id));
   P.tagName = (id) => SPECIAL[id] || P.tags({ hidden: true }).find((t) => t.id === id)?.name || "Recipes";
@@ -110,8 +128,12 @@
     if (id === "all") return all;
     if (id === "fav") return all.filter((r) => S.fav[r.id]);
     if (id === "recent") return S.recent.map((i) => P.recipe(i)).filter(Boolean);
+    if (id === "top") return all.filter((r) => S.rate[r.id] >= 4);
+    if (id === "made") return Object.keys(S.made).sort((a, b) => P.lastMade(b) - P.lastMade(a)).map((i) => P.recipe(i)).filter(Boolean);
+    if (id === "quick") return all.filter((r) => r.min && r.min <= 30);
     return all.filter((r) => r.tag === id);
   };
+  P.keepsOrder = (id) => id === "recent" || id === "made";      // collections that are already in a meaningful order
 
   P.renameTag = (id, name) => { S.tags.names[id] = name.trim() || P.tagName(id); touch(); };
   P.setCover = (id, v) => { S.tags.covers[id] = v; touch(); };
@@ -158,6 +180,8 @@
     if (mode === "za") return out.sort((a, b) => az(b, a));
     if (mode === "quick") return out.sort((a, b) => (a.min || 9999) - (b.min || 9999) || az(a, b));
     if (mode === "fav") return out.sort((a, b) => (!!S.fav[b.id] - !!S.fav[a.id]) || az(a, b));
+    if (mode === "rating") return out.sort((a, b) => (S.rate[b.id] || 0) - (S.rate[a.id] || 0) || az(a, b));
+    if (mode === "cooked") return out.sort((a, b) => (S.made[b.id]?.length || 0) - (S.made[a.id]?.length || 0) || az(a, b));
     if (mode === "new") {
       const age = (r) => (r.user ? 1e15 + (r.created || 0) : +r.id || 0);
       return out.sort((a, b) => age(b) - age(a));
@@ -201,6 +225,33 @@
   P.setNotes = (id, text) => { if (text.trim()) S.notes[id] = text; else delete S.notes[id]; P.save(); };
   P.touchRecent = (id) => { S.recent = [id, ...S.recent.filter((x) => x !== id)].slice(0, 40); P.save(); };
 
+  /* ---------- your rating, and how often you have cooked it ---------- */
+  P.rating = (id) => S.rate[id] || 0;
+  P.setRating = (id, n) => {
+    if (!n || S.rate[id] === n) delete S.rate[id]; else S.rate[id] = n;         // tapping the same star again clears it
+    P.save(); P.emit("rate", id);
+    return S.rate[id] || 0;
+  };
+  P.madeTimes = (id) => S.made[id] || [];
+  P.lastMade = (id) => Math.max(0, ...(S.made[id] || []));
+  P.markMade = (id, when = Date.now()) => {
+    (S.made[id] ||= []).push(when);
+    P.save(); P.emit("made", id);
+    return () => P.unmarkMade(id, when);                                          // undo
+  };
+  P.unmarkMade = (id, when) => {
+    const log = S.made[id];
+    if (!log) return;
+    const i = log.lastIndexOf(when);
+    if (i >= 0) log.splice(i, 1);
+    if (!log.length) delete S.made[id];
+    P.save(); P.emit("made", id);
+  };
+
+  /* ---------- units: as written, US, or metric ---------- */
+  P.unitMode = () => S.ui.units || "orig";
+  P.setUnitMode = (mode) => { S.ui.units = mode; P.save(); P.emit("units", mode); };
+
   /* ---------- writing recipes ---------- */
   const newId = () => "u" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
   P.saveRecipe = (rec) => {
@@ -218,6 +269,7 @@
       video: (rec.video || "").trim(),
       cr: rec.cr || "",                       // who to thank for a photo that is not ours
       crl: rec.crl || "",
+      tip: rec.tip || "",                     // the one-line tip some sample recipes carry
       ing: rec.ing || [],
       steps: rec.steps || [],
     };
@@ -261,14 +313,15 @@
     P.emit("data");
   };
 
-  /* ---------- router: #/  ·  #/t/<tag>  ·  #/t/<tag>/r/<id>[/edit]  ·  #/new[/<tag>] ---------- */
-  P.route = { tag: "poultry", id: null, mode: "view", home: true };
+  /* ---------- router: #/  ·  #/t/<tag>  ·  #/t/<tag>/r/<id>[/edit]  ·  #/new[/<tag>]  ·  #/ai  #/shop  #/plan  #/pantry ---------- */
+  P.PANES = ["ai", "shop", "plan", "pantry"];                    // whole-pane tools that borrow the list column for context
+  P.route = { tag: "chicken", id: null, mode: "view", home: true };
   P.parseRoute = () => {
     const parts = location.hash.replace(/^#\/?/, "").split("/").map(decodeURIComponent).filter(Boolean);
     const r = { tag: null, id: null, mode: "view", home: false };
     if (!parts.length) { r.home = true; return r; }
     if (parts[0] === "new") { r.mode = "new"; r.tag = parts[1] || null; return r; }
-    if (parts[0] === "ai" || parts[0] === "shop") { r.mode = parts[0]; return r; }
+    if (P.PANES.includes(parts[0])) { r.mode = parts[0]; return r; }
     if (parts[0] === "t") {
       r.tag = parts[1] || null;
       if (parts[2] === "r") { r.id = parts[3] || null; if (parts[4] === "edit") r.mode = "edit"; }
@@ -277,17 +330,25 @@
   };
   P.pathFor = ({ tag, id, mode }) => {
     if (mode === "new") return tag ? `new/${tag}` : "new";
-    if (mode === "ai" || mode === "shop") return mode;
+    if (P.PANES.includes(mode)) return mode;
     if (!tag) return "";
     return `t/${tag}${id ? `/r/${encodeURIComponent(id)}${mode === "edit" ? "/edit" : ""}` : ""}`;
   };
+  // a route handler may redirect (home → the last recipe); if two redirects ever chased each other this would be a
+  // stack overflow, so nested route changes are cut off after a few levels
+  let routeDepth = 0;
+  const emitRoute = () => {
+    if (routeDepth > 6) return;
+    routeDepth++;
+    try { P.emit("route"); } finally { routeDepth--; }
+  };
   P.go = (path, opts = {}) => {
     const hash = "#/" + path;
-    if (opts.replace) { history.replaceState(null, "", hash === "#/" ? location.pathname : hash); P.emit("route"); }
-    else if (location.hash === hash || (hash === "#/" && !location.hash)) P.emit("route");
+    if (opts.replace) { history.replaceState(null, "", hash === "#/" ? location.pathname : hash); emitRoute(); }
+    else if (location.hash === hash || (hash === "#/" && !location.hash)) emitRoute();
     else location.hash = hash;
   };
-  addEventListener("hashchange", () => P.emit("route"));
+  addEventListener("hashchange", emitRoute);
 
   /* ---------- viewport ---------- */
   const mqNarrow = matchMedia("(max-width: 720px)"), mqMedium = matchMedia("(max-width: 1020px)");

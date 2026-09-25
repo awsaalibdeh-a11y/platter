@@ -26,7 +26,8 @@ TAGS = [
     ("appetizers", "Appetizers"),
     ("soup", "Soup"),
     ("salad", "Salad"),
-    ("poultry", "Poultry"),
+    ("chicken", "Chicken"),
+    ("poultry", "Turkey & Duck"),
     ("beef", "Beef"),
     ("seafood", "Seafood"),
     ("pork", "Pork"),
@@ -206,6 +207,8 @@ def estimate_serves(instructions, category):
 
 def classify(meal):
     name, cat = meal["strMeal"], meal["strCategory"]
+    if cat == "Chicken":
+        return "chicken"                # a chicken noodle soup is still a chicken dish: it lives here, not in Soup
     if cat != "Dessert":
         if SOUP.search(name):
             return "soup"
@@ -217,8 +220,8 @@ def classify(meal):
         return "appetizers"
     if cat in ("Side", "Miscellaneous", "Vegetarian", "Vegan") and NIBBLE.search(name):
         return "appetizers"
-    if cat == "Chicken" or (cat in ("Miscellaneous",) and POULTRY.search(name)):
-        return "poultry"
+    if cat == "Miscellaneous" and POULTRY.search(name):
+        return "chicken" if re.search(r"chicken", name, re.I) else "poultry"
     return {"Beef": "beef", "Seafood": "seafood", "Pork": "pork", "Lamb": "lamb", "Goat": "lamb",
             "Vegetarian": "vegetarian", "Vegan": "vegetarian", "Dessert": "desserts", "Breakfast": "breakfast",
             "Side": "sides", "Pasta": "pasta"}.get(cat, "mains")
@@ -278,6 +281,15 @@ def main():
         }
         recipes.append(rec)
         per_tag[tag].append(rec)
+
+    # dishes TheMealDB lacks, written once by scripts/add_chicken.py and kept as plain data
+    extras_dir = os.path.join(BASE, "scripts", "extras")
+    for name in sorted(os.listdir(extras_dir)) if os.path.isdir(extras_dir) else []:
+        if name.endswith(".json"):
+            with open(os.path.join(extras_dir, name), encoding="utf-8") as fh:
+                for rec in json.load(fh):
+                    recipes.append(rec)
+                    per_tag[rec["tag"]].append(rec)
 
     by_title = {r["title"].lower(): r for r in recipes}
     tags = []

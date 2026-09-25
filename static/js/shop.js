@@ -31,8 +31,10 @@
   };
   const withLastWord = (name, fn) => name.replace(/(\S+)$/, (w) => fn(w));
 
+  // "boneless, skinless chicken thighs, cubed" is one ingredient with a comma inside its name, not "boneless" plus a note
+  const DESCRIPTOR_COMMA = /\b(boneless|skinless|skin-on|bone-in|large|medium|small|fresh|ripe|firm|whole|unsalted|salted|lean|thick|thin|dry|dried)\s*,\s*(?=[a-z])/gi;
   const cleanName = (rest) => {
-    let n = rest.replace(/\([^)]*\)/g, " ").split(",")[0];
+    let n = rest.replace(/\([^)]*\)/g, " ").replace(DESCRIPTOR_COMMA, "$1 ").split(",")[0];
     n = n.replace(/^of\s+/i, "").replace(/\s+/g, " ").trim().toLowerCase();
     return n.replace(SIZE_WORDS, "");
   };
@@ -130,6 +132,8 @@
   P.shop = {
     has: (id) => S().recipes.some((r) => r.id === id),
     recipes: () => S().recipes,
+    /** What an ingredient line is called ("2 cloves garlic, minced" → "garlic"): what the pantry finder matches on. */
+    nameOf: (line) => read(line).name,
 
     sections() {
       const items = [...collect().values()].filter((e) => !S().hidden[e.key]).map((e) => ({

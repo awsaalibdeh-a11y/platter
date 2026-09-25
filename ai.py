@@ -26,7 +26,7 @@ EFFORT = os.environ.get("OPENAI_REASONING_EFFORT", "minimal")     # the fastest 
 DAILY_LIMIT = int(os.environ.get("AI_DAILY_LIMIT", "400"))         # a ceiling on what a public URL can spend
 UA = {"User-Agent": "PlatterRecipeBox/1.0 (https://github.com/awsaalibdeh-a11y/platter)", "Accept": "application/json"}
 
-DEFAULT_TAGS = [("appetizers", "Appetizers"), ("soup", "Soup"), ("salad", "Salad"), ("poultry", "Poultry"), ("beef", "Beef"),
+DEFAULT_TAGS = [("appetizers", "Appetizers"), ("soup", "Soup"), ("salad", "Salad"), ("chicken", "Chicken"), ("poultry", "Turkey & Duck"), ("beef", "Beef"),
                 ("seafood", "Seafood"), ("pork", "Pork"), ("lamb", "Lamb"), ("vegetarian", "Vegetarian Mains"),
                 ("pasta", "Pasta & Noodles"), ("desserts", "Desserts"), ("breakfast", "Breakfast"), ("sides", "Sides"),
                 ("mains", "Everyday Mains")]
