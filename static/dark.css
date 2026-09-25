@@ -83,6 +83,17 @@
 :root[data-theme="dark"] .timer.done { background: var(--lime); color: var(--lime-ink); }
 :root[data-theme="dark"] .timer.done .t-ic .ic { color: var(--lime-ink); }
 :root[data-theme="dark"] .timer.done .t-x { color: rgba(28, 40, 6, 0.6); }
+:root[data-theme="dark"] .timer::after { background: var(--lime); color: var(--lime-ink); }
+:root[data-theme="dark"] .t-plus { background: rgba(30, 30, 26, 0.12); }
+:root[data-theme="dark"] .t-plus:hover { background: rgba(30, 30, 26, 0.22); }
+:root[data-theme="dark"] .timer.done .t-plus { background: rgba(28, 40, 6, 0.12); }
+:root[data-theme="dark"] .t-new { background: rgba(31, 33, 20, 0.82); color: #fff; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.432); }
+:root[data-theme="dark"] .t-new .ic { color: var(--lime); }
+:root[data-theme="dark"] .timer-sheet .sheet-h .ic { color: #cce28d; }
+:root[data-theme="dark"] .t-preset { background: var(--field); box-shadow: inset 0 0 0 1px #3d3a34; color: #999892; }
+:root[data-theme="dark"] .t-preset b { color: var(--ink); }
+:root[data-theme="dark"] .t-preset:hover { background: #353a21; box-shadow: inset 0 0 0 1px #c9dd8e; }
+:root[data-theme="dark"] .t-custom { color: #999892; }
 :root[data-theme="dark"] .hero.editable .hero-ph { color: #5f5c4e; }
 :root[data-theme="dark"] .label { color: #959490; }
 :root[data-theme="dark"] .hint { color: var(--muted); }

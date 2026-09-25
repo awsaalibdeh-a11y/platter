@@ -30,6 +30,7 @@
       case "h": P.views.help(); break;
       case "g": P.views.cookSteps(); break;
       case "t": P.views.toggleTheme(); break;
+      case "w": P.timers.sheet(); break;
       case "?": P.views.shortcuts(); break;
       case "[": P.views.toggleSidebar(); break;
       default:

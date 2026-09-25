@@ -83,6 +83,17 @@
 :root[data-theme="white"] .timer.done { background: var(--lime); color: var(--lime-ink); }
 :root[data-theme="white"] .timer.done .t-ic .ic { color: var(--lime-ink); }
 :root[data-theme="white"] .timer.done .t-x { color: rgba(0, 0, 0, 0.6); }
+:root[data-theme="white"] .timer::after { background: var(--lime); }
+:root[data-theme="white"] .t-plus { background: rgba(255, 255, 255, 0.12); }
+:root[data-theme="white"] .t-plus:hover { background: rgba(255, 255, 255, 0.22); }
+:root[data-theme="white"] .timer.done .t-plus { background: rgba(0, 0, 0, 0.12); }
+:root[data-theme="white"] .t-new { background: rgba(0, 0, 0, 0.82); color: #fff; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.24); }
+:root[data-theme="white"] .t-new .ic { color: var(--lime); }
+:root[data-theme="white"] .timer-sheet .sheet-h .ic { color: #7ea11a; }
+:root[data-theme="white"] .t-preset { background: var(--field); box-shadow: inset 0 0 0 1px #dddee1; color: #64656b; }
+:root[data-theme="white"] .t-preset b { color: var(--ink); }
+:root[data-theme="white"] .t-preset:hover { background: #eef5d6; box-shadow: inset 0 0 0 1px #c9dd8e; }
+:root[data-theme="white"] .t-custom { color: #64656b; }
 :root[data-theme="white"] .hero.editable .hero-ph { color: #adadb5; }
 :root[data-theme="white"] .label { color: #67686e; }
 :root[data-theme="white"] .hint { color: var(--muted); }

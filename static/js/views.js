@@ -246,7 +246,7 @@
   function shortcuts() {
     const keys = [["Ctrl K", "Search everything"], ["/", "Search this tag"], ["j  k", "Next / previous recipe"], ["g", "Cook step by step"], ["h", "Ask the recipe helper"], ["e", "Edit"], ["f", "Favorite"],
       ["c", "Cook Mode"], ["n", "New recipe"], ["d", "Discover"], ["a", "Ask AI what to cook"], ["p", "What can I make?"], ["m", "Meal plan"],
-      ["s", "Shopping list"], ["y", "Your kitchen"], ["r", "Surprise me"], ["t", "Light / dark"], ["[", "Hide the sidebar"], ["?", "This list"]];
+      ["s", "Shopping list"], ["y", "Your kitchen"], ["r", "Surprise me"], ["w", "New timer"], ["t", "Light / dark"], ["[", "Hide the sidebar"], ["?", "This list"]];
     P.sheet((close) => [
       h("h3", { class: "sheet-h" }, "Keyboard shortcuts"),
       h("div", { class: "keys" }, keys.map(([k, what]) => h("div", { class: "key-row" }, h("span", {}, k.split("  ").map((x) => h("kbd", {}, x))), h("span", {}, what)))),
@@ -842,6 +842,7 @@
     return ul;
   }
 
+  const short = (s) => (s.length > 22 ? `${s.slice(0, 20).trimEnd()}…` : s);
   function stepsEl(r) {
     const done = P.stepsDone(r.id);
     const ol = h("ol", { class: "steps" });
@@ -867,7 +868,7 @@
         h("span", { class: "step-n" }, String(i + 1)),
         h("div", { class: "step-main" }, h("p", {}, shown),
           h("div", { class: "step-tools" },
-            timers.map((t) => h("button", { class: "timer-chip", type: "button", title: `Start a ${t.label} timer`, onClick: (e) => { e.stopPropagation(); P.cook.start(t.seconds, `Step ${i + 1}`); } }, hi("timer"), t.label)),
+            timers.map((t) => h("button", { class: "timer-chip", type: "button", title: `Start a ${t.label} timer`, onClick: (e) => { e.stopPropagation(); P.cook.start(t.seconds, `${short(r.title)} · step ${i + 1}`); } }, hi("timer"), t.label)),
             explain)));
       const flip = () => { if (!selecting(li)) { P.toggleStep(r.id, i); mark(); } };
       li.addEventListener("click", flip);

@@ -308,6 +308,32 @@ a.chip:hover, button.chip:hover { background: #e9e7de; cursor: pointer; }
 .timer.done .t-x { color: rgba(28, 40, 6, 0.6); }
 @keyframes ring { from { transform: scale(1); } to { transform: scale(1.05); } }
 
+/* ================= timers: a progress bar, +1 min, and the "new timer" sheet ================= */
+.timer { position: relative; }
+.timer::after { content: ""; position: absolute; left: 0; bottom: 0; height: 3px; width: calc(var(--p, 0) * 100%); background: var(--lime); transition: width 0.25s linear; }
+.timer.done::after { display: none; }
+.timer.paused::after { opacity: 0.45; }
+.t-label { max-width: 11rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.t-plus { height: 1.7rem; padding: 0 0.45rem; margin-left: 0.2rem; border: 0; border-radius: 999px; background: rgba(255, 255, 255, 0.12); color: inherit; font-size: 0.72rem; font-weight: 700; cursor: pointer; }
+.t-plus:hover { background: rgba(255, 255, 255, 0.22); }
+.timer.done .t-plus { background: rgba(28, 40, 6, 0.12); }
+.t-new { display: inline-flex; align-items: center; gap: 0.3rem; height: 1.9rem; padding: 0 0.75rem 0 0.55rem; border: 0; border-radius: 999px; background: rgba(31, 33, 20, 0.82); color: #fff; font-size: 0.74rem; font-weight: 700; box-shadow: 0 6px 18px rgba(20, 22, 6, 0.24); cursor: pointer; }
+.t-new .ic { width: 0.85rem; height: 0.85rem; color: var(--lime); }
+.timer-sheet .sheet-h { display: flex; align-items: center; gap: 0.45rem; }
+.timer-sheet .sheet-h .ic { width: 1.2rem; height: 1.2rem; color: #7ea11a; }
+.t-ideas { margin: -0.1rem 0 0; }
+.t-ideas .chip { cursor: pointer; }
+.t-presets { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.45rem; }
+.t-preset { display: grid; place-items: center; gap: 0.05rem; padding: 0.55rem 0 0.5rem; border: 0; border-radius: 0.8rem; background: var(--field); box-shadow: inset 0 0 0 1px #e6e2d8; color: #6b6a64; font-size: 0.68rem; font-weight: 600; cursor: pointer; transition: transform 0.12s var(--ease), background 0.12s; }
+.t-preset b { color: var(--ink); font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+.t-preset:hover { background: #eef5d6; box-shadow: inset 0 0 0 1px #c9dd8e; }
+.t-preset:active { transform: scale(0.96); }
+.t-custom { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem; color: #6b6a64; font-size: 0.82rem; font-weight: 600; }
+.t-custom .t-num { width: 4.2rem; text-align: center; font-variant-numeric: tabular-nums; }
+.t-custom .btn { margin-left: auto; }
+.t-note { font-size: 0.8rem; }
+@media (max-width: 720px) { .t-label { max-width: 7.5rem; } }
+
 /* ================= editor + forms ================= */
 .hero.editable { aspect-ratio: 2.6 / 1; }
 .hero.editable .hero-ph { color: #b9b6a9; }

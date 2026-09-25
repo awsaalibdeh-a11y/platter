@@ -25,6 +25,7 @@
     ["White mode", "sun", "light theme bright", () => { P.setTheme("white"); P.toast("White mode."); }],
     ["Warm mode", "sun", "light theme paper cream beige", () => { P.setTheme("warm"); P.toast("Warm mode."); }],
     ["Dark mode", "moon", "night theme black", () => { P.setTheme("dark"); P.toast("Dark mode."); }],
+    ["Start a timer", "timer", "timer clock alarm countdown minutes egg pasta kitchen", () => P.timers.sheet()],
     ["Surprise me", "shuffle", "random", () => P.views.surprise()],
     ["Keyboard shortcuts", "keyboard", "keys help", () => P.views.shortcuts()],
     ["All recipes", "book", "everything library", () => P.go(P.pathFor({ tag: "all" }))],
