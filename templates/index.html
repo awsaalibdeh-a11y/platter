@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Platter — your recipe box</title>
+  <meta name="description" content="A recipe box with tags, a servings scaler, Cook Mode with timers, and one-tap import from any recipe link.">
+  <meta name="theme-color" content="#fafaf8">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Platter">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='icons/logo.svg') }}">
+  <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.themealdb.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ v }}">
+  <script>window.PLATTER = { v: "{{ v }}" };</script>
+</head>
+<body>
+  <div class="app" id="app" data-nav="detail" data-side="open">
+
+    <!-- 1 · tags -->
+    <aside class="side" id="side" aria-label="Tags">
+      <div class="strip strip-side">
+        <button class="ibtn" id="btn-sidebar" type="button" aria-label="Hide sidebar" title="Hide sidebar  ( [ )" data-icon="sidebar"></button>
+      </div>
+      <div class="brand">
+        <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24"><rect width="24" height="24" rx="6.4" fill="#d0e98a"/><rect x="6.2" y="5.2" width="3.4" height="14.2" rx="1.2" fill="#0e1800"/><circle cx="12.7" cy="10.4" r="4.2" fill="none" stroke="#0e1800" stroke-width="3.4"/></svg></span>
+        <span class="wordmark">Platter</span>
+        <div class="brand-actions">
+          <button class="cbtn" id="btn-tags" type="button" aria-label="Edit tags" title="Edit tags" aria-pressed="false" data-icon="pencil"></button>
+          <button class="cbtn" id="btn-folder" type="button" aria-label="Collections" title="All recipes, favorites, recent" aria-haspopup="menu" data-icon="folder"></button>
+          <button class="cbtn" id="btn-people" type="button" aria-label="Share and backup" title="Share and backup" aria-haspopup="menu" data-icon="peopleFill"></button>
+          <button class="cbtn lime" id="btn-add" type="button" aria-label="Add a recipe" title="Add a recipe  ( N )" data-icon="plus"></button>
+        </div>
+      </div>
+      <div class="tiles" id="tiles" role="list">
+        <div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div>
+        <div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div>
+      </div>
+    </aside>
+
+    <!-- 2 · recipes in the tag -->
+    <section class="list" id="list" aria-label="Recipes">
+      <div class="strip strip-list">
+        <button class="back" id="back-tags" type="button"><span data-icon="chevron"></span><span>Tags</span></button>
+        <button class="ibtn side-show" id="btn-sidebar-show" type="button" aria-label="Show sidebar" title="Show sidebar  ( [ )" data-icon="sidebar"></button>
+      </div>
+      <header class="list-head">
+        <div>
+          <h2 class="list-title" id="list-title">Recipes</h2>
+          <p class="list-count" id="list-count" aria-live="polite">&nbsp;</p>
+        </div>
+        <button class="ibtn sortbtn" id="sort-btn" type="button" aria-haspopup="menu" aria-label="Sort and filter" title="Sort and filter" data-icon="arrowUp"></button>
+      </header>
+      <div class="search">
+        <span class="search-ic" data-icon="search"></span>
+        <input id="search" type="text" inputmode="search" placeholder="Search this tag" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Search this tag" enterkeyhint="search">
+        <button class="search-clear" id="search-clear" type="button" hidden aria-label="Clear search" data-icon="x"></button>
+      </div>
+      <div class="filter-row" id="filter-row" hidden></div>
+      <div class="rows" id="rows" role="listbox" aria-label="Recipes"></div>
+    </section>
+
+    <!-- 3 · the recipe -->
+    <main class="detail" id="detail">
+      <div class="strip strip-detail">
+        <button class="back" id="back-list" type="button"><span data-icon="chevron"></span><span class="back-label">Recipes</span></button>
+      </div>
+      <div class="detail-top" id="detail-top"></div>
+      <div class="detail-scroll" id="detail-scroll"></div>
+    </main>
+
+    <div class="side-scrim" id="side-scrim"></div>
+  </div>
+
+  <div id="layer"></div>
+  <div class="toasts" id="toasts" aria-live="polite"></div>
+  <noscript><p style="padding:2rem;font-family:sans-serif">Platter needs JavaScript to run.</p></noscript>
+
+  <script defer src="{{ url_for('static', filename='js/util.js') }}?v={{ v }}"></script>
+  <script defer src="{{ url_for('static', filename='js/store.js') }}?v={{ v }}"></script>
+  <script defer src="{{ url_for('static', filename='js/ui.js') }}?v={{ v }}"></script>
+  <script defer src="{{ url_for('static', filename='js/cook.js') }}?v={{ v }}"></script>
+  <script defer src="{{ url_for('static', filename='js/views.js') }}?v={{ v }}"></script>
+  <script defer src="{{ url_for('static', filename='js/main.js') }}?v={{ v }}"></script>
+</body>
+</html>
