@@ -473,7 +473,19 @@
     else if (location.hash === hash || (hash === "#/" && !location.hash)) emitRoute();
     else location.hash = hash;
   };
-  addEventListener("hashchange", emitRoute);
+  const calm = matchMedia("(prefers-reduced-motion: reduce)");
+  const wide = matchMedia("(min-width: 721px)");
+  addEventListener("hashchange", () => {
+    if (!document.startViewTransition || !wide.matches || calm.matches || document.hidden) return emitRoute();
+    // the animation is a nicety: whatever happens to it (skipped because the tab is hidden, or cut short by the next
+    // navigation), the page itself is redrawn exactly once
+    let drawn = false;
+    const draw = () => { if (!drawn) { drawn = true; emitRoute(); } };
+    const vt = document.startViewTransition(draw);
+    vt.updateCallbackDone.catch(() => {}).finally(draw);
+    vt.ready.catch(() => {});
+    vt.finished.catch(() => {});
+  });
 
   /* ---------- viewport ---------- */
   const mqNarrow = matchMedia("(max-width: 720px)"), mqMedium = matchMedia("(max-width: 1020px)");

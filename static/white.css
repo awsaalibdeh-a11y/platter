@@ -382,14 +382,18 @@
 :root[data-theme="white"] .gate-chip .ic { color: var(--lime); }
 :root[data-theme="white"] .gate-chip.low { background: var(--danger); }
 :root[data-theme="white"] .gate-chip.low .ic { color: #ffffff; }
-@media (max-width: 1020px) {
-  :root[data-theme="white"] .side { box-shadow: 18px 0 50px rgba(0, 0, 0, 0.25); }
-  :root[data-theme="white"] .side-scrim { background: rgba(0, 0, 0, 0.28); }
-}
 @media (max-width: 720px) {
+  :root[data-theme="white"] .tabbar { background: rgba(255, 255, 255, 0.9); box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.07); }
+  :root[data-theme="white"] .tab { color: var(--muted); }
+  :root[data-theme="white"] .tab.on { color: var(--ink); }
+  :root[data-theme="white"] .tab.on span[data-icon] { background: var(--lime-soft); color: #33430a; }
   :root[data-theme="white"] .list { box-shadow: -14px 0 30px -18px rgba(0, 0, 0, 0.25); }
   :root[data-theme="white"] .detail { box-shadow: -14px 0 30px -18px rgba(0, 0, 0, 0.25); }
   :root[data-theme="white"] .scrim.clear { background: rgba(0, 0, 0, 0.3); }
+}
+@media (max-width: 1020px) {
+  :root[data-theme="white"] .side { box-shadow: 18px 0 50px rgba(0, 0, 0, 0.25); }
+  :root[data-theme="white"] .side-scrim { background: rgba(0, 0, 0, 0.28); }
 }
 /* ---------- by hand ---------- */
 :root[data-theme="white"] {

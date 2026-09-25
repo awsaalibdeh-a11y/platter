@@ -826,6 +826,30 @@ body.helper-open .dock { right: calc(min(25rem, 100vw - 2rem) + 2.2rem); }
   .cookrow .switch-wrap { margin-left: 0; }
 }
 
+/* ================= phones: the tab bar; wide screens: a soft hand-over between pages ================= */
+.tabbar { display: none; }
+@media (max-width: 720px) {
+  .tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: grid; grid-template-columns: repeat(5, 1fr); padding: 0.3rem 0.35rem calc(0.3rem + env(safe-area-inset-bottom)); background: rgba(250, 250, 248, 0.9); -webkit-backdrop-filter: blur(16px) saturate(1.4); backdrop-filter: blur(16px) saturate(1.4); box-shadow: 0 -1px 0 rgba(0, 0, 0, 0.07); }
+  .tab { position: relative; display: grid; justify-items: center; gap: 0.12rem; padding: 0.3rem 0 0.15rem; border: 0; background: transparent; color: var(--muted); font-size: 0.63rem; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .tab span[data-icon] { display: grid; place-items: center; width: 3rem; height: 1.75rem; border-radius: 999px; transition: background 0.15s; }
+  .tab .ic { width: 1.3rem; height: 1.3rem; }
+  .tab.on { color: var(--ink); }
+  .tab.on span[data-icon] { background: var(--lime-soft); color: #33430a; }
+  .tab .qn { top: 0.05rem; right: calc(50% - 1.6rem); }
+  body.typing .tabbar { display: none; }
+  .tiles, .rows, .detail-scroll { padding-bottom: calc(5.4rem + env(safe-area-inset-bottom)); }
+  .dock, .gate-chip { bottom: calc(4.7rem + env(safe-area-inset-bottom)); }
+  .toasts { bottom: calc(5.2rem + env(safe-area-inset-bottom)); }
+}
+@media (min-width: 721px) and (prefers-reduced-motion: no-preference) {
+  .detail-scroll { view-transition-name: detail-page; }
+}
+::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+::view-transition-old(detail-page) { animation: 110ms ease-out both vt-out; }
+::view-transition-new(detail-page) { animation: 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both vt-in; }
+@keyframes vt-out { to { opacity: 0; } }
+@keyframes vt-in { from { opacity: 0; transform: translateY(6px); } }
+
 /* ================= quick filters and "did you mean" ================= */
 .qfilters { display: flex; gap: 0.35rem; margin: 0 1rem 0.5rem; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; }
 .qfilters::-webkit-scrollbar { display: none; }
@@ -1125,7 +1149,7 @@ html[data-gate="locked"] .gate { background: var(--bg-side); }
   body { height: auto; overflow: visible; background: #fff; }
   .app { display: block; height: auto; }
   .side, .list, .strip, .detail-top, .expand, .starbtn, .scaler button, .switch-wrap, .linkbtn, .dock, .toasts, #layer, .side-scrim, .shopbar, .shop-add, .shop-foot, .rx, .shop-item .rm, .credit,
-  .notes-wrap.empty, .chip.empty, .step-timers, .cookrow, .seg, .plan-add, .askbtn, .hero-btns, .steps-hint, .step-tools, .similar, .helper, .askpill, .gate-chip { display: none !important; }
+  .notes-wrap.empty, .chip.empty, .step-timers, .cookrow, .seg, .plan-add, .askbtn, .hero-btns, .steps-hint, .step-tools, .similar, .helper, .askpill, .gate-chip, .tabbar { display: none !important; }
   .hero::after { display: none; }
   .detail { display: block; box-shadow: none; }
   .detail-scroll { overflow: visible; padding: 0; }

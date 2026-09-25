@@ -76,6 +76,19 @@
         row("coins", P.prices.summary(), P.S.prices.guessed ? "Guessed from your time zone" : null,
           h("button", { class: "btn ghost sm", type: "button", onClick: () => P.prices.sheet() }, "Change"))),
 
+      (() => {
+        const installed = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+        const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+        return section("Get the app", "Open Platter like any other app: its own icon, full screen, and it works offline.",
+          installed ? row("check", "Installed", "You're using Platter as an app.")
+            : P.installPrompt ? h("button", { class: "btn lime sm", type: "button", onClick: async () => {
+              P.installPrompt.prompt();
+              await P.installPrompt.userChoice.catch(() => null);
+              P.installPrompt = null;
+              redraw();
+            } }, hi("download"), "Install Platter")
+              : h("p", { class: "set-about" }, ios ? "On iPhone or iPad: tap the Share button, then “Add to Home Screen”." : "In your browser's menu, choose “Install app” or “Add to Home screen”."));
+      })(),
       section("Your data", "Your recipes, favorites, plans and lists live in this browser. Back them up to move them to another device.",
         h("div", { class: "row-btns" },
           h("button", { class: "btn ghost sm", type: "button", onClick: backup }, hi("download"), "Download a backup"),

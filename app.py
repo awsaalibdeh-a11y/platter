@@ -107,6 +107,14 @@ def index():
     return render_template("index.html", v=_asset_version())     # a handful of stat() calls: cheap
 
 
+@app.route("/version")
+def version():
+    """Which build this is: a tab left open notices a newer deploy and offers to reload."""
+    resp = jsonify(v=_asset_version())
+    resp.headers["Cache-Control"] = "no-store"
+    return resp
+
+
 @app.route("/healthz")
 def healthz():
     return "ok"

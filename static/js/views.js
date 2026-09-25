@@ -40,6 +40,17 @@
     $("#btn-folder").addEventListener("click", (e) => collectionsMenu(e.currentTarget));
     $("#btn-people").addEventListener("click", () => { if (P.isMedium()) { state.drawer = false; syncSide(); } P.go("settings"); });
     $("#btn-search").addEventListener("click", () => P.palette.open());
+    for (const t of document.querySelectorAll(".tab[data-tab]")) {
+      t.addEventListener("click", () => {
+        const go = t.dataset.tab;
+        if (go === "search") return P.palette.open();
+        if (go === "recipes") return P.go(P.route.mode === "view" && !P.route.home && P.route.id ? P.pathFor({ tag: P.route.tag }) : "");
+        P.go(go);
+      });
+    }
+    // the on-screen keyboard needs the room: tuck the tab bar away while typing
+    document.addEventListener("focusin", (e) => document.body.classList.toggle("typing", /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)));
+    document.addEventListener("focusout", () => document.body.classList.remove("typing"));
     $("#btn-theme").addEventListener("click", () => P.views.toggleTheme());
     if (/Mac|iPhone|iPad/.test(navigator.platform)) $("#gsearch-key").textContent = "⌘K";
     P.on("theme", syncThemeBtn);
@@ -62,6 +73,7 @@
     P.on("made", onCook);
     P.on("plan", () => { syncQuick(); if (P.route.mode === "plan") renderDetail(); });
     P.on("books", onBooks);
+    P.on("install", () => P.route.mode === "settings" && renderDetail());
     P.on("prices", () => { renderList(); if (["view", "shop", "plan", "discover"].includes(P.route.mode)) renderDetail(); });
     P.on("diet", () => { renderList(); if (P.route.mode === "view" && P.route.id || P.route.mode === "discover" || P.route.mode === "pantry") renderDetail(); });
     P.on("units", () => P.route.mode === "view" && P.route.id && renderDetail());
@@ -1201,8 +1213,21 @@
     document.title = `${{ new: "New recipe", ai: "Ask AI", shop: "Shopping list", plan: "Meal plan", pantry: "What can I make?", discover: "Discover", stats: "Your kitchen", shared: "Shared recipe", settings: "Settings" }[mode] || (r ? r.title : P.tagName(tag))} · Platter`;
   }
 
+  /** The phone tab bar: which place you are in. */
+  function syncTabs() {
+    const { mode } = P.route;
+    const on = mode === "discover" ? "discover" : mode === "plan" ? "plan" : mode === "shop" ? "shop" : mode === "view" || mode === "edit" || mode === "new" ? "recipes" : "";
+    for (const t of document.querySelectorAll(".tab[data-tab]")) {
+      t.classList.toggle("on", t.dataset.tab === on);
+      if (t.dataset.tab === on) t.setAttribute("aria-current", "page"); else t.removeAttribute("aria-current");
+    }
+    const n = P.shop.count(), badge = document.querySelector('.tab[data-tab="shop"] .qn');
+    if (badge) { badge.textContent = n > 99 ? "99+" : String(n); badge.hidden = !n; }
+  }
+
   /** The Discover / Plan / Pantry / List buttons above the tiles: which one is open, and the counts. */
   function syncQuick() {
+    syncTabs();
     for (const b of document.querySelectorAll(".qbtn[data-go]")) {
       const on = P.route.mode === b.dataset.go;
       b.classList.toggle("on", on);

@@ -43,13 +43,32 @@
   addEventListener("offline", () => P.toast("You're offline. Your recipes still work; photos and AI need a connection.", { ms: 4200 }));
   addEventListener("online", () => P.toast("Back online."));
 
+  // a newer Platter was deployed while this tab stayed open: offer to reload (checked when you come back to it)
+  let told = false;
+  const checkVersion = async () => {
+    if (told || document.hidden || !navigator.onLine) return;
+    try {
+      const d = await fetch("/version", { cache: "no-store" }).then((r) => r.json());
+      if (d.v && d.v !== window.PLATTER.v) {
+        told = true;
+        P.toast("A new version of Platter is ready.", { action: { label: "Reload", fn: () => location.reload() }, ms: 20000 });
+      }
+    } catch { /* offline or asleep: try again next time */ }
+  };
+  document.addEventListener("visibilitychange", checkVersion);
+  setInterval(checkVersion, 20 * 60 * 1000);
+
+  // "Install Platter": the browser offers it once the page qualifies; Settings shows the button
+  addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); P.installPrompt = e; P.emit("install"); });
+  addEventListener("appinstalled", () => { P.installPrompt = null; P.toast("Platter is installed. Find it with your other apps."); P.emit("install"); });
+
   (async () => {
     P.hydrateIcons();
     P.views.init();
     try { await P.loadLibrary(); }
     catch (e) { console.error(e); P.views.fail(); return; }
     P.views.start();
-    P.loadDetails();
-    P.prices.start();                       // your currency: guessed from the time zone, then priced once a week                        // descriptions, tips and nutrition: after the first screen is up
+    P.loadDetails();                        // descriptions, tips and nutrition: after the first screen is up
+    P.prices.start();                       // your currency: guessed from the time zone, then priced once a week
   })();
 })();
