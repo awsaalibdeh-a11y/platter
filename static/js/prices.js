@@ -26,6 +26,7 @@
     return AISLE_KIND[aisle] || "general";
   }
   function kindsOf(r) {
+    r = r._orig || r;                                              // a translation is priced by its original lines
     let k = kinds.get(r);
     if (!k) { k = r.ing.map(kindOfLine); kinds.set(r, k); }
     return k;
@@ -57,14 +58,21 @@
     return v;
   }
 
+  // building an Intl.NumberFormat is slow (a list of 1,100 prices took a tenth of a second): make each one once
+  const formats = new Map();
+  const formatter = (key, opts) => {
+    if (!formats.has(key)) { try { formats.set(key, new Intl.NumberFormat(undefined, opts)); } catch { formats.set(key, null); } }
+    return formats.get(key);
+  };
   function fmt(x) {
     const c = cal()?.currency || "USD";
-    const opts = x >= 100 ? { maximumFractionDigits: 0 } : x >= 10 ? { maximumFractionDigits: 1 } : { minimumFractionDigits: 2, maximumFractionDigits: 2 };
-    try { return new Intl.NumberFormat(undefined, { style: "currency", currency: c, currencyDisplay: "narrowSymbol", ...opts }).format(x); }
-    catch { return `${x.toFixed(2)} ${c}`; }
+    const band = x >= 100 ? 0 : x >= 10 ? 1 : 2;
+    const opts = band === 0 ? { maximumFractionDigits: 0 } : band === 1 ? { maximumFractionDigits: 1 } : { minimumFractionDigits: 2, maximumFractionDigits: 2 };
+    const f = formatter(`${c}|${band}`, { style: "currency", currency: c, currencyDisplay: "narrowSymbol", ...opts });
+    return f ? f.format(x) : `${x.toFixed(2)} ${c}`;
   }
   /** A bare amount for an ingredient line: the currency is already said at the top. */
-  const amount = (x) => (x < 0.005 ? "" : x < 0.01 ? "<0.01" : new Intl.NumberFormat(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(x));
+  const amount = (x) => (x < 0.005 ? "" : x < 0.01 ? "<0.01" : formatter("amount", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(x));
 
   const regionName = (cc) => { try { return new Intl.DisplayNames([navigator.language, "en"], { type: "region" }).of(cc) || cc; } catch { return cc; } };
   const place = () => [S().city, S().name || regionName(S().cc)].filter(Boolean).join(", ");

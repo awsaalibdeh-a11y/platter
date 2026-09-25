@@ -59,6 +59,21 @@
           h("button", { class: "btn ghost", type: "button", onClick: (e) => P.plan.menu(e.currentTarget, r) }, hi("calendar"), "Plan it"))));
   }
 
+  /** The first time: four things worth trying, then out of the way for good. */
+  function welcome() {
+    if (P.S.ui.welcomed) return null;
+    const tip = (ic, title, sub, fn) => h("button", { class: "wtip", type: "button", onClick: () => { fn(); } }, h("span", { class: "wtip-ic", html: P.icon(ic) }), h("b", {}, title), h("small", {}, sub));
+    const card = h("section", { class: "welcome" },
+      h("div", { class: "welcome-head" }, h("div", {}, h("h2", {}, "Welcome to Platter"), h("p", {}, "A recipe box that cooks with you. A few things to try first:")),
+        h("button", { class: "btn ghost sm", type: "button", onClick: () => { P.S.ui.welcomed = true; P.save(); card.remove(); } }, "Got it")),
+      h("div", { class: "wtips" },
+        tip("camera", "Snap your fridge", "See what you can make with what you've got", () => P.go("pantry")),
+        tip("leaf", "Set your diet", "Low fat, no milk, vegetarian… everything follows it", () => P.diet.sheet()),
+        tip("calendar", "Plan your week", "Dinners picked for you, one tap to a shopping list", () => P.go("plan")),
+        tip("search", "Search everything", "Recipes, tags and actions: press Ctrl K", () => P.palette.open())));
+    return card;
+  }
+
   P.panes.discover = (top, scroll, ctx) => {
     const all = P.diet.filter(P.recipes()).filter((r) => r.img);
     const hour = new Date().getHours();
@@ -101,6 +116,7 @@
         P.diet.has() ? [h("span", {}, h("b", {}, "Your diet: "), P.diet.summary(), P.diet.active() ? "" : " (showing everything)"), h("button", { class: "textbtn", type: "button", onClick: () => P.diet.sheet() }, "Change")]
           : [h("span", {}, "Eat low fat, no milk, vegetarian…? "), h("button", { class: "textbtn", type: "button", onClick: () => P.diet.sheet() }, "Set your diet")],
         h("button", { class: "textbtn", type: "button", onClick: () => P.go("pantry") }, hi("camera"), "Snap your fridge")),
+      welcome(),
       today ? hero(today) : null,
       planned.length ? h("section", { class: "dplan" },
         h("div", { class: "drow-head" }, h("h2", {}, "On your plan today"), h("button", { class: "textbtn", type: "button", onClick: () => P.go("plan") }, "Open the plan")),

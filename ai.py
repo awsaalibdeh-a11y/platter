@@ -644,3 +644,42 @@ def fridge():
             seen.add(name)
             items.append(name)
     return jsonify(items=items[:30], note=_s(data.get("note"), 200))
+
+
+# ---------- translate a recipe ----------
+LANGS = {"ar": "Arabic", "es": "Spanish", "fr": "French", "de": "German", "it": "Italian", "pt": "Portuguese", "tr": "Turkish",
+         "hi": "Hindi", "ur": "Urdu", "fa": "Persian", "zh": "Simplified Chinese", "ja": "Japanese", "ko": "Korean", "ru": "Russian",
+         "id": "Indonesian", "nl": "Dutch", "pl": "Polish", "el": "Greek", "he": "Hebrew", "sw": "Swahili"}
+
+TRANSLATE_PROMPT = """You translate a recipe for a cooking app into {lang}, the way a good cookbook in {lang} would say it: natural, clear and accurate.
+- Start each ingredient line with its amount and unit exactly as given ("2 tbsp", "1.5 lb", "400 g") so the app can still scale them; translate the rest of the line.
+- In the steps, translate everything, times and temperatures included, keeping every number in the digits 0-9 (never other numerals).
+- Keep exactly the same number of ingredient lines and steps, in the same order.
+Return ONLY JSON: {{"title": str, "about": str, "ingredients": [str], "steps": [str], "tip": str, "serve": str}}"""
+
+
+@bp.post("/api/ai/translate")
+def translate():
+    body = request.get_json(silent=True) or {}
+    lang = LANGS.get(str(body.get("lang") or ""))
+    rec = body.get("recipe") if isinstance(body.get("recipe"), dict) else {}
+    ings = [_s(x, 220) for x in (rec.get("ing") or [])[:45] if isinstance(x, str)]
+    steps = [_s(x, 900) for x in (rec.get("steps") or [])[:30] if isinstance(x, str)]
+    if not lang or not _s(rec.get("title"), 120) or not ings:
+        return jsonify(error="Pick a language and a recipe."), 400
+    if not _configured():
+        return jsonify(error="AI isn't switched on for this site yet.", code="off"), 503
+    if _limited("llm"):
+        return jsonify(error="That's a lot of AI requests. Give it a little while."), 429
+    source = {"title": _s(rec.get("title"), 120), "about": _s(rec.get("about"), 600), "ingredients": ings, "steps": steps,
+              "tip": _s(rec.get("tip"), 300), "serve": _s(rec.get("serve"), 120)}
+    try:
+        data = _ask(TRANSLATE_PROMPT.format(lang=lang), json.dumps(source, ensure_ascii=False), 5000, read_timeout=50, tries=1)
+    except AIError as exc:
+        return jsonify(error=str(exc)), exc.status
+    t_ings = [_s(x, 260) for x in (data.get("ingredients") or []) if isinstance(x, str)]
+    t_steps = [_s(x, 1200) for x in (data.get("steps") or []) if isinstance(x, str)]
+    if len(t_ings) != len(ings) or len(t_steps) != len(steps):
+        return jsonify(error="The translation came back out of step with the recipe. Try again."), 502
+    return jsonify(lang=body.get("lang"), language=lang, title=_s(data.get("title"), 160), about=_s(data.get("about"), 900),
+                   ing=t_ings, steps=t_steps, tip=_s(data.get("tip"), 400), serve=_s(data.get("serve"), 160))

@@ -4,6 +4,7 @@
   const typing = (t) => t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
 
   addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k" && !P.gate?.blocking()) { e.preventDefault(); P.palette.open(); return; }
     if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
     if (P.gate?.blocking()) return;                     // the "name the creator" door is up
     if (typing(e.target)) { if (e.key === "Escape") e.target.blur(); return; }

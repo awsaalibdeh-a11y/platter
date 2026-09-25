@@ -1,4 +1,7 @@
-"""Write static/dark.css: Platter's dark theme, generated from static/style.css.
+"""Write static/dark.css and static/white.css: Platter's dark and white themes, generated from static/style.css.
+
+style.css itself is the "Warm" theme (paper-toned greys). White is the same design on crisp, neutral surfaces: every
+warm grey becomes a very slightly cool one and light surfaces get brighter; the lime accent stays.
 
 style.css is written for the light theme, with its colours inline. Rather than keep two hand-written palettes in step,
 this reads every rule, keeps only the declarations that carry a colour, and writes a copy of the rule under
@@ -24,6 +27,7 @@ import re
 BASE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(BASE, "static", "style.css")
 OUT = os.path.join(BASE, "static", "dark.css")
+OUT_WHITE = os.path.join(BASE, "static", "white.css")
 DARK = ':root[data-theme="dark"]'
 
 COLOR_PROPS = {"background", "background-color", "background-image", "color", "border", "border-color", "border-top", "border-bottom",
@@ -132,6 +136,35 @@ def dark(c, role):
 
 
 # ---------- css ----------
+def white(c, role):
+    """Map one warm-theme colour to the white theme: neutral greys, brighter surfaces, accents untouched."""
+    r, g, b, a = parse(c)
+    h, l, s = hls(r, g, b)
+    neutral = s < 0.3 or l > 0.975 or l < 0.05
+    if a < 0.999:
+        if neutral or l < 0.4:                       # warm-tinted shadows, rings and hover washes turn neutral
+            v = 0 if l < 0.5 else 255
+            return fmt(v, v, v, a)
+        return c
+    if not neutral:
+        return c
+    if role == "bg" and l >= 0.85:
+        l = min(1.0, l + (1 - l) * 0.45)
+    return from_hls(0.66, l, 0.05 if l > 0.5 else 0.03, 1)
+
+
+EXTRA_WHITE = """
+/* ---------- by hand ---------- */
+:root[data-theme="white"] {
+  --bg-detail: #ffffff; --bg-list: #f7f7f9; --bg-side: #f1f1f4; --field: #f1f1f4; --chip: #efeff2; --line: #e6e6eb;
+  --ink: #111114; --ink-2: #38383d; --muted: #6c6c72; --faint: #aeaeb4;
+  --pop: 0 16px 44px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+:root[data-theme="white"] .side { box-shadow: 1px 0 0 rgba(0, 0, 0, 0.06); }
+:root[data-theme="white"] .detail { box-shadow: -1px 0 0 #ececf0; }
+"""
+
+
 def split_top(text, sep):
     out, depth, cur = [], 0, ""
     for ch in text:
@@ -146,19 +179,20 @@ def split_top(text, sep):
     return out
 
 
-def map_value(prop, value, keep_fg):
+def map_value(prop, value, keep_fg, fn=None):
+    fn = fn or dark
     if prop == "box-shadow":
         layers = []
         for layer in split_top(value, ","):
             nums = re.findall(r"(-?[\d.]+)(?:px|rem|em)?(?=\s|$)", COLOR_RE.sub(" ", layer).replace("inset", " "))
             ring = len(nums) >= 3 and float(nums[2]) == 0
-            layers.append(COLOR_RE.sub(lambda m: dark(m.group(0), "line" if ring else "shadow"), layer))
+            layers.append(COLOR_RE.sub(lambda m: fn(m.group(0), "line" if ring else "shadow"), layer))
         return ",".join(layers)
     role = ("fg" if prop in ("color", "fill", "stroke", "caret-color") else
             "bg" if prop.startswith("background") else "line")
     if role == "fg" and keep_fg:
         return value
-    return COLOR_RE.sub(lambda m: dark(m.group(0), role), value)
+    return COLOR_RE.sub(lambda m: fn(m.group(0), role), value)
 
 
 def rules(css):
@@ -193,18 +227,23 @@ def rules(css):
         i = end + 1
 
 
-def prefix(selector):
+def prefix(selector, root=DARK):
     parts = []
     for part in split_top(selector, ","):
         part = part.strip()
         if part.startswith((":root", "html")):
-            parts.append(DARK + part[len(":root") if part.startswith(":root") else len("html"):])
+            parts.append(root + part[len(":root") if part.startswith(":root") else len("html"):])
         else:
-            parts.append(f"{DARK} {part}")
+            parts.append(f"{root} {part}")
     return ", ".join(parts)
 
 
 def main():
+    build("dark", dark, EXTRA, OUT, DARK, fix_lime=True)
+    build("white", white, EXTRA_WHITE, OUT_WHITE, ':root[data-theme="white"]', fix_lime=False)
+
+
+def build(name, fn, extra, path, root, fix_lime):
     css = re.sub(r"/\*.*?\*/", "", open(SRC, encoding="utf-8").read(), flags=re.S)
     out, groups = [], {}
     order = []
@@ -223,15 +262,15 @@ def main():
         bg = next((v for p, v in decls if p in ("background", "background-color")), "")
         bright = "var(--lime)" in bg or any(is_bright_accent(c) for c in COLOR_RE.findall(bg))
         overlay = any(parse(c)[3] < 0.9 and hls(*parse(c)[:3])[1] < 0.4 for c in COLOR_RE.findall(bg))
-        lines = [f"{p}: {map_value(p, v, bright or overlay)};" for p, v in decls]
-        if bright and not any(p == "color" for p, _ in decls):
+        lines = [f"{p}: {map_value(p, v, bright or overlay, fn)};" for p, v in decls]
+        if fix_lime and bright and not any(p == "color" for p, _ in decls):
             lines.append("color: var(--lime-ink);")          # a surface that turns lime keeps dark text on it
-        rule = f"{prefix(selector)} {{ {' '.join(lines)} }}"
+        rule = f"{prefix(selector, root)} {{ {' '.join(lines)} }}"
         if wrapper not in groups:
             groups[wrapper] = []
             order.append(wrapper)
         groups[wrapper].append(rule)
-    out.append("/* Platter's dark theme. Generated by scripts/build_dark_css.py from style.css: don't edit by hand. */")
+    out.append(f"/* Platter's {name} theme. Generated by scripts/build_dark_css.py from style.css: don't edit by hand. */")
     for w in order:
         if w is None:
             out.extend(groups[w])
@@ -239,10 +278,10 @@ def main():
             out.append(w + " {")
             out.extend("  " + r for r in groups[w])
             out.append("}")
-    out.append(EXTRA.strip())
-    with open(OUT, "w", encoding="utf-8") as fh:
+    out.append(extra.strip())
+    with open(path, "w", encoding="utf-8") as fh:
         fh.write("\n".join(out) + "\n")
-    print(f"wrote {OUT}: {sum(len(v) for v in groups.values())} rules, {os.path.getsize(OUT) // 1024} KB")
+    print(f"wrote {path}: {sum(len(v) for v in groups.values())} rules, {os.path.getsize(path) // 1024} KB")
 
 
 if __name__ == "__main__":

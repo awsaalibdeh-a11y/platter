@@ -15,6 +15,13 @@ like an iPad app, in a browser.
 - **A door at the front**: on the first visit Platter asks for its creator's name. The right name (any capitalisation)
   opens it for good; a wrong one gives 30 minutes with a timer in the corner, then Platter closes behind a lock
   screen until the name is given (`static/js/gate.js`). It is stored in the visitor's browser, like everything else
+- **White, Warm and Dark**: a crisp white theme (the default in daylight), the original warm paper tones, and dark; Auto
+  follows your device. Switch with the sun/moon button, in Settings, or press `t`
+- **Settings**, in one clear page (the gear): appearance, units, diet, prices, your data, help
+- **Search everything** (Ctrl K, or the bar at the top of the sidebar): recipes by name or ingredient, tags, cookbooks
+  and actions such as "dark mode" or "snap my fridge"
+- **Translate any recipe** into Arabic (right to left), Spanish, French, Urdu, Turkish and 15 more, with "Save as a copy"
+- **Scale to what I have**: "I have 1 kg of chicken" and the whole recipe scales to match
 - **Prices where you are**: every recipe shows what it costs in your currency, per ingredient, per serving and in
   total (it follows the servings you pick); so do list rows (and "Cheapest first"), the shopping list total, the meal
   plan's week and a "Cheap eats" row on Discover. Where you are is guessed from your device's time zone (no location
@@ -37,6 +44,8 @@ like an iPad app, in a browser.
 - **Your kitchen**: meals cooked, your streak, a cooking calendar of the last 18 weeks, your most-cooked dishes and cuisines
 - **Share links for your own recipes**: the whole recipe travels (compressed) inside the link, so anyone who opens it
   can save a copy; no account, and the recipe never touches the server
+- **Clearer recipe pages**: a jump bar (Ingredients, Directions, Nutrition, Notes) that stays at the top, and a labelled
+  More menu for remix, translate, scale, print and copy
 - **Recipe helper**: stuck on a step? Select any words in a recipe and tap "Ask AI about this", tap **Explain** on a step, or open the helper and ask. The recipe (at your servings, in your units) goes along as context, and the answer streams in
 - **Cook step by step**: one step at a time, full screen and big type, with the ingredients that step uses, its timers, read-aloud,
   **voice control** (say "next", "back", "repeat", "timer"; Chrome and Edge), swipe or arrow keys, and "I made this" at the end
@@ -108,15 +117,15 @@ with fish sauce is never "vegetarian", one with butter is never "dairy-free". Nu
 so on the page. `build_library.py` keeps the small fields (level, diet, calories) in `library.json` and puts the
 longer text in `details.json`, which the app loads after the first screen is drawn.
 
-**Dark mode** is `static/dark.css`, generated from `style.css` by `scripts/build_dark_css.py`: run it after
-changing colours in `style.css`.
+**The White and Dark themes** are `static/white.css` and `static/dark.css`, generated from `style.css` (which is the Warm
+theme) by `scripts/build_dark_css.py`: run it after changing colours in `style.css`.
 
 ## Layout
 
 ```
 app.py                 Flask: page, cached/gzipped assets, /api/import (SSRF-guarded)
 prices.py              /api/prices: a grocery basket priced where you are, as a factor per kind of food
-ai.py                  /api/ai/ideas, /api/ai/recipe, /api/ai/remix, /api/ai/extract, /api/ai/fridge, /api/ai/ask (OpenAI) and /api/ai/photo (free photo sources)
+ai.py                  /api/ai/ideas, /api/ai/recipe, /api/ai/remix, /api/ai/extract, /api/ai/fridge, /api/ai/translate, /api/ai/ask (OpenAI) and /api/ai/photo (free photo sources)
 templates/index.html   the three panes
 static/style.css       every size measured from the reference, in rem
 static/js/util.js      icons, quantity parser and scaler
@@ -129,6 +138,8 @@ static/js/pantry.js    "What can I make?": ranks recipes by what is in the kitch
 static/js/ai.js        the Ask AI pane
 static/js/gate.js      the "name the creator" door and its 30-minute timer
 static/js/aitools.js   Remix, reading a recipe in from a photo or text, and the fridge photo
+static/js/settings.js  the Settings page
+static/js/palette.js   search everything (Ctrl K)
 static/js/prices.js    prices where you are: the guess, the settings sheet, costs in your money
 static/js/diet.js      your diet: the rules, checking a recipe against them, the settings sheet
 static/js/books.js     cookbooks, and the Your kitchen page
@@ -137,13 +148,14 @@ static/js/help.js      the recipe helper: select-to-ask, Explain, the streaming 
 static/js/steps.js     cook step by step
 static/js/discover.js  the Discover front page
 static/dark.css        the dark theme (generated)
+static/white.css       the white theme (generated)
 static/sw.js           the service worker: the app and library offline, remembered photos
 scripts/add_chicken.py writes scripts/extras/chicken.json (the extra chicken, turkey and duck dishes)
 scripts/add_recipes.py writes scripts/extras/more.json (206 dishes across the other tags)
 scripts/costs.py       writes scripts/costs.json (what each ingredient line costs in US dollars)
 scripts/build_timezones.py writes static/data/tz.json (time zone to country, from IANA)
 scripts/enrich.py      writes scripts/details.json (descriptions, levels, nutrition, diet labels)
-scripts/build_dark_css.py  writes static/dark.css from static/style.css
+scripts/build_dark_css.py  writes static/dark.css and static/white.css from static/style.css
 static/js/views.js     tiles, list, recipe, editor
 static/js/main.js      start-up and keyboard shortcuts
 ```

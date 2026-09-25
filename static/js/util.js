@@ -90,11 +90,21 @@
     camera: '<path d="M4 8.4a2 2 0 0 1 2-2h1.9l1.5-2h5.2l1.5 2H18a2 2 0 0 1 2 2v9.2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8.4z"/><circle cx="12" cy="12.8" r="3.5"/>',
     mic: '<rect x="9" y="3.4" width="6" height="11" rx="3"/><path d="M5.8 11.4a6.2 6.2 0 0 0 12.4 0M12 17.6v3"/>',
     coins: '<ellipse cx="9.5" cy="7.5" rx="5.5" ry="2.6"/><path d="M4 7.5v4c0 1.4 2.5 2.6 5.5 2.6s5.5-1.2 5.5-2.6v-4"/><path d="M9.5 16.6v1.3c0 1.4 2.5 2.6 5.5 2.6s5.5-1.2 5.5-2.6v-4c0-1.4-2.5-2.6-5.5-2.6"/>',
+    gear: '<circle cx="12" cy="12" r="3"/><path d="M19.4 13.5a7.6 7.6 0 0 0 0-3l2-1.5-2-3.4-2.4.9a7.5 7.5 0 0 0-2.6-1.5L14 2.5h-4l-.4 2.5a7.5 7.5 0 0 0-2.6 1.5l-2.4-.9-2 3.4 2 1.5a7.6 7.6 0 0 0 0 3l-2 1.5 2 3.4 2.4-.9a7.5 7.5 0 0 0 2.6 1.5l.4 2.5h4l.4-2.5a7.5 7.5 0 0 0 2.6-1.5l2.4.9 2-3.4-2-1.5z"/>',
+    globe: '<circle cx="12" cy="12" r="8.6"/><path d="M3.6 12h16.8M12 3.4c2.4 2.4 3.6 5.3 3.6 8.6s-1.2 6.2-3.6 8.6c-2.4-2.4-3.6-5.3-3.6-8.6S9.6 5.8 12 3.4z"/>',
+    scale: '<path d="M6 20.2h12a1.8 1.8 0 0 0 1.8-2l-1-8.4A1.8 1.8 0 0 0 17 8.2H7a1.8 1.8 0 0 0-1.8 1.6l-1 8.4a1.8 1.8 0 0 0 1.8 2z"/><path d="M9 8.2V6.6a3 3 0 0 1 6 0v1.6M12 12.4l1.6 2.2"/>',
     keyboard: '<rect x="2.8" y="6" width="18.4" height="12" rx="2.4"/><path d="M6.5 9.6h.1M10 9.6h.1M13.5 9.6h.1M17 9.6h.1M6.5 12.8h.1M17 12.8h.1M9 15.2h6"/>',
     fire: '<path d="M12 3.2c.7 3.4 5.2 5.2 5.2 10.2a5.2 5.2 0 0 1-10.4 0c0-1.9.9-3.3 2-4.4.3 1.5 1.1 2.3 2 2.7C10.6 8.8 10.5 6 12 3.2z"/>',
   };
   P.icon = (name, cls = "") =>
     `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ""}</svg>`;
+  /** The same icon as a ready-made node: cloning one is much faster than parsing its SVG again, row after row. */
+  const iconTemplates = {};
+  P.iconNode = (name) => {
+    let t = iconTemplates[name];
+    if (!t) { const box = document.createElement("span"); box.innerHTML = P.icon(name); t = iconTemplates[name] = box.firstChild; }
+    return t.cloneNode(true);
+  };
   P.hydrateIcons = (root = document) => {
     for (const el of root.querySelectorAll("[data-icon]")) el.innerHTML = P.icon(el.dataset.icon);
   };

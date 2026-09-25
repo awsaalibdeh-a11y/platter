@@ -38,7 +38,12 @@
     $("#btn-ai").addEventListener("click", () => openAI());
     $("#btn-tags").addEventListener("click", toggleTileEditing);
     $("#btn-folder").addEventListener("click", (e) => collectionsMenu(e.currentTarget));
-    $("#btn-people").addEventListener("click", (e) => shareMenu(e.currentTarget));
+    $("#btn-people").addEventListener("click", () => { if (P.isMedium()) { state.drawer = false; syncSide(); } P.go("settings"); });
+    $("#btn-search").addEventListener("click", () => P.palette.open());
+    $("#btn-theme").addEventListener("click", () => P.views.toggleTheme());
+    if (/Mac|iPhone|iPad/.test(navigator.platform)) $("#gsearch-key").textContent = "⌘K";
+    P.on("theme", syncThemeBtn);
+    syncThemeBtn();
     $("#btn-sidebar").addEventListener("click", toggleSidebar);
     $("#btn-sidebar-show").addEventListener("click", toggleSidebar);
     for (const b of document.querySelectorAll(".qbtn[data-go]")) {
@@ -226,35 +231,8 @@
     }, { align: "left" });
   }
 
-  function shareMenu(anchor) {
-    const seg = (items, cur, set) => h("div", { class: "seg wide", role: "group" }, items.map(([k, label, ic]) =>
-      h("button", { type: "button", class: cur === k ? "on" : "", "aria-pressed": String(cur === k), onClick: () => set(k) }, ic ? hi(ic) : null, label)));
-    P.popover(anchor, (close) => {
-      const again = () => { close(); shareMenu(anchor); };             // redraw so the pressed button moves
-      return [
-      h("div", { class: "pop-h" }, "Appearance"),
-      h("div", { class: "pop-seg" }, seg([["auto", "Auto", "auto"], ["light", "Light", "sun"], ["dark", "Dark", "moon"]], P.theme(), (t) => { P.setTheme(t); again(); })),
-      h("div", { class: "pop-h" }, "Units"),
-      h("div", { class: "pop-seg" }, seg([["orig", "As written"], ["us", "US"], ["metric", "Metric"]], P.unitMode(), (u) => { P.setUnitMode(u); again(); })),
-      h("div", { class: "pop-h" }, "Diet"),
-      P.menuItem({ label: "Prices", sub: P.prices.summary(), icon: "coins", onClick: () => { close(); P.prices.sheet(); } }),
-      P.menuItem({ label: "My diet", sub: P.diet.has() ? P.diet.summary() : "Low fat, no milk, vegetarian… not set", icon: "leaf", onClick: () => { close(); P.diet.sheet(); } }),
-      P.menuItem({ label: "Keyboard shortcuts", icon: "keyboard", onClick: () => { close(); shortcuts(); } }),
-      h("div", { class: "pop-sep" }),
-      h("div", { class: "pop-h" }, "Share & backup"),
-      P.menuItem({ label: "Download a backup", sub: "Your recipes, edits and favorites in one file", icon: "download", onClick: () => { close(); backup(); } }),
-      P.menuItem({ label: "Restore from a backup", sub: "Bring your library to another device", icon: "upload", onClick: () => { close(); restore(); } }),
-      P.menuItem({ label: "Copy the link to Platter", icon: "link", onClick: async () => { close(); await P.copyText(location.origin); P.toast("Link copied."); } }),
-      h("div", { class: "pop-sep" }),
-      h("p", { class: "pop-note" }, "Everything you change is saved in this browser. Most sample recipes come from ",
-        h("a", { href: "https://www.themealdb.com", target: "_blank", rel: "noopener noreferrer" }, "TheMealDB"),
-        "; the ones marked “AI recipe” were written by AI. Descriptions, levels and nutrition are AI estimates."),
-      ];
-    }, { class: "wide", align: "left" });
-  }
-
   function shortcuts() {
-    const keys = [["/", "Search"], ["j  k", "Next / previous recipe"], ["g", "Cook step by step"], ["h", "Ask the recipe helper"], ["e", "Edit"], ["f", "Favorite"],
+    const keys = [["Ctrl K", "Search everything"], ["/", "Search this tag"], ["j  k", "Next / previous recipe"], ["g", "Cook step by step"], ["h", "Ask the recipe helper"], ["e", "Edit"], ["f", "Favorite"],
       ["c", "Cook Mode"], ["n", "New recipe"], ["d", "Discover"], ["a", "Ask AI what to cook"], ["p", "What can I make?"], ["m", "Meal plan"],
       ["s", "Shopping list"], ["y", "Your kitchen"], ["r", "Surprise me"], ["t", "Light / dark"], ["[", "Hide the sidebar"], ["?", "This list"]];
     P.sheet((close) => [
@@ -262,16 +240,6 @@
       h("div", { class: "keys" }, keys.map(([k, what]) => h("div", { class: "key-row" }, h("span", {}, k.split("  ").map((x) => h("kbd", {}, x))), h("span", {}, what)))),
       h("div", { class: "sheet-btns" }, h("button", { class: "btn lime", type: "button", onClick: close }, "Got it")),
     ], { label: "Keyboard shortcuts" });
-  }
-
-  const backup = () => P.download(`platter-backup-${new Date().toISOString().slice(0, 10)}.json`, P.exportData());
-  function restore() {
-    const input = h("input", { type: "file", accept: "application/json,.json" });
-    input.addEventListener("change", async () => {
-      try { P.importData(await input.files[0].text()); P.toast("Library restored."); }
-      catch (e) { P.toast(e instanceof SyntaxError ? "Couldn't read that file." : e.message); }
-    });
-    input.click();
   }
 
   function sortMenu(anchor) {
@@ -334,11 +302,25 @@
     els.sortBtn.classList.toggle("desc", P.S.ui.sort === "za");
     els.sortBtn.classList.toggle("filtered", anyFilter());
     renderFilterRow();
+    // the first screenful (and the open recipe) at once; the rest follows in batches, so a list of 1,100 appears instantly
+    const selected = list.findIndex((r) => r.id === P.route.id);
+    const first = Math.max(60, selected + 20);
     const frag = document.createDocumentFragment();
     if (!list.length) frag.append(emptyList());
-    else for (const r of list) frag.append(rowEl(r));
+    else for (const r of list.slice(0, first)) frag.append(rowEl(r));
     els.rows.replaceChildren(frag);
     syncRows(true);
+    const token = (state.listToken = (state.listToken || 0) + 1);
+    let next = first;
+    const more = () => {
+      if (token !== state.listToken || next >= list.length) return;          // a newer list has replaced this one
+      const batch = document.createDocumentFragment();
+      for (const r of list.slice(next, next + 200)) batch.append(rowEl(r));
+      next += 200;
+      els.rows.append(batch);
+      setTimeout(more, 0);
+    };
+    if (next < list.length) setTimeout(more, 0);
   }
 
   function renderFilterRow() {
@@ -375,16 +357,15 @@
       class: "row" + (on ? " on" : "") + (P.isFav(r.id) ? " fav" : ""), type: "button", role: "option",
       "aria-selected": String(on), "data-id": r.id, onClick: () => openRecipe(r.id),
     },
-    h("span", { class: "row-thumb" }, thumbEl(r, "small"), r.video ? h("span", { class: "row-play", html: icon("play") }) : null),
+    h("span", { class: "row-thumb" }, thumbEl(r, "small"), r.video ? h("span", { class: "row-play" }, P.iconNode("play")) : null),
     h("span", { class: "row-body" },
       h("span", { class: "row-title" }, r.title),
-      h("span", { class: "row-dom" }, h("span", { class: "row-dom-text" }, rowMeta(r)), h("span", { class: "row-fav", html: icon("star") }))));
+      h("span", { class: "row-dom" }, h("span", { class: "row-dom-text" }, rowMeta(r)), h("span", { class: "row-fav" }, P.iconNode("star")), rowPrice(r))));
   }
   /** "35 min · Easy", or where the recipe came from when there's nothing better to say. */
-  const rowMeta = (r) => {
-    const cost = P.prices.perServing(r);
-    return [r.min ? P.fmtMin(r.min) : "", r.level || "", cost != null ? P.prices.fmt(cost) : ""].filter(Boolean).join(" · ") || r.dom || "";
-  };
+  const rowMeta = (r) => [r.min ? P.fmtMin(r.min) : "", r.level || ""].filter(Boolean).join(" · ") || r.dom || "";
+  /** The price a serving, on the right of the row where it's never cut off. */
+  const rowPrice = (r) => { const c = P.prices.perServing(r); return c != null ? h("span", { class: "row-price", title: "A serving, where you are (estimate)" }, P.prices.fmt(c)) : null; };
 
   function emptyList() {
     const tag = P.route.tag;
@@ -483,18 +464,149 @@
 
   const actBtn = (name, label, fn) => h("button", { class: `abtn a-${name}`, type: "button", title: label, "aria-label": label, html: icon(name), onClick: fn });
 
-  function renderRecipe(r) {
+  function syncThemeBtn() {
+    const dark = P.resolvedTheme() === "dark", b = $("#btn-theme");
+    if (!b) return;
+    b.innerHTML = icon(dark ? "sun" : "moon");
+    b.title = dark ? "Switch to light  ( T )" : "Switch to dark  ( T )";
+    b.setAttribute("aria-label", b.title);
+  }
+
+  /* ---------- translation: AI, on demand; nothing is saved unless you ask ---------- */
+  const LANGS = [["ar", "العربية", "Arabic"], ["es", "Español", "Spanish"], ["fr", "Français", "French"], ["de", "Deutsch", "German"],
+    ["it", "Italiano", "Italian"], ["pt", "Português", "Portuguese"], ["tr", "Türkçe", "Turkish"], ["ur", "اردو", "Urdu"], ["fa", "فارسی", "Persian"],
+    ["hi", "हिन्दी", "Hindi"], ["zh", "中文", "Chinese"], ["ja", "日本語", "Japanese"], ["ko", "한국어", "Korean"], ["ru", "Русский", "Russian"],
+    ["id", "Bahasa Indonesia", "Indonesian"], ["nl", "Nederlands", "Dutch"], ["pl", "Polski", "Polish"], ["el", "Ελληνικά", "Greek"],
+    ["he", "עברית", "Hebrew"], ["sw", "Kiswahili", "Swahili"]];
+  const RTL = new Set(["ar", "ur", "fa", "he"]);
+  const langName = (code) => LANGS.find((l) => l[0] === code)?.[2] || code;
+  const trCache = new Map();                                      // "id|lang" → the translated fields
+
+  /** The recipe as it should be shown: its translation laid over it, when one was asked for. */
+  function shown(r) {
+    const t = state.tr && state.tr.id === r.id && trCache.get(`${r.id}|${state.tr.lang}`);
+    return t ? { ...r, title: t.title || r.title, about: t.about || r.about, ing: t.ing, steps: t.steps, tip: t.tip || r.tip, serve: t.serve || r.serve, _orig: r, _lang: state.tr.lang } : r;
+  }
+
+  async function translate(r, lang) {
+    const key = `${r.id}|${lang}`;
+    if (!trCache.has(key)) {
+      const busy = P.sheet(() => [h("div", { class: "working" }, h("span", { class: "spin big", "aria-hidden": "true" }), h("h3", { class: "sheet-h" }, "Translating…"),
+        h("p", { class: "sheet-p" }, `Into ${langName(lang)}. This takes about ten seconds.`))], { persistent: true, class: "small", label: "Translating" });
+      try {
+        const res = await fetch("/api/ai/translate", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ lang, recipe: { title: r.title, about: r.about, ing: r.ing, steps: r.steps, tip: r.tip, serve: r.serve } }) });
+        const d = await res.json().catch(() => ({}));
+        busy.close();
+        if (!res.ok) throw new Error(d.error || "Couldn't translate it. Try again.");
+        trCache.set(key, d);
+      } catch (e) { busy.close(); P.toast(e.message, { ms: 5000 }); return; }
+    }
+    state.tr = { id: r.id, lang };
+    state.lastLang = lang;
+    if (P.route.id === r.id) renderDetail();
+  }
+
+  function translateMenu(anchor, r) {
+    P.popover(anchor, (close) => [
+      h("div", { class: "pop-h" }, "Translate this recipe"),
+      h("p", { class: "pop-note" }, "The AI translates it for reading; the original stays as it is."),
+      ...LANGS.map(([code, own, en]) => P.menuItem({ label: own, sub: own === en ? null : en, icon: "globe", onClick: () => { close(); translate(r, code); } })),
+    ], { class: "scroll", align: "right" });
+  }
+
+  function saveTranslation(v) {
+    const r = v._orig;
+    const id = P.saveRecipe({ ...r, id: null, title: v.title, about: v.about, ing: v.ing, steps: v.steps, tip: v.tip, serve: v.serve, dom: `Translated (${langName(v._lang)})` });
+    state.tr = null;
+    P.toast("Saved the translation as a new recipe.");
+    P.go(P.pathFor({ tag: r.tag, id }));
+  }
+
+  /* ---------- "I have 600 g of chicken": scale the whole recipe to it ---------- */
+  const MASS = { g: 1, kg: 1000, oz: 28.35, lb: 453.6, lbs: 453.6, pound: 453.6, ounce: 28.35 };
+  const VOL = { ml: 1, l: 1000, litre: 1000, liter: 1000, tsp: 4.93, teaspoon: 4.93, tbsp: 14.79, tablespoon: 14.79, tbs: 14.79, cup: 240, pint: 473 };
+  const SHOWN_UNITS = ["g", "kg", "oz", "lb", "ml", "l", "tsp", "tbsp", "cup"];
+  function scaleSheet(r) {
+    const base = r.serves || 4;
+    const opts = r.ing.map((line, i) => ({ line, i, p: P.parseLine(line) })).filter((o) => o.p && o.p.q > 0);
+    if (!opts.length) { P.toast("None of the ingredients has an amount to scale by."); return; }
+    P.sheet((close) => {
+      const sel = h("select", { class: "input", "aria-label": "Ingredient" }, opts.map((o) => h("option", { value: String(o.i) }, o.line)));
+      const amt = h("input", { class: "input", type: "number", min: "0", step: "any", inputmode: "decimal", placeholder: "How much you have", "aria-label": "How much you have", "data-autofocus": "" });
+      const unit = h("select", { class: "input unit", "aria-label": "Unit" });
+      const note = h("p", { class: "hint", "aria-live": "polite" });
+      const cur = () => opts.find((o) => String(o.i) === sel.value) || opts[0];
+      const fam = (o) => (o.p.unit && MASS[o.p.unit.one] ? MASS : o.p.unit && VOL[o.p.unit.one] ? VOL : null);
+      const calc = () => {
+        const o = cur(), f = fam(o), have = +amt.value;
+        if (!(have > 0)) { note.textContent = `The recipe uses ${o.line} for ${P.plural(base, "serving")}.`; return 0; }
+        const need = o.p.q * (f ? f[o.p.unit.one] : 1), got = have * (f ? f[unit.value] : 1);
+        const n = Math.max(1, Math.min(99, Math.round((base * got) / need)));
+        note.textContent = `That's enough for about ${P.plural(n, "serving")}.`;
+        return n;
+      };
+      const fillUnits = () => {
+        const o = cur(), f = fam(o);
+        const list = f ? Object.keys(f).filter((u) => SHOWN_UNITS.includes(u)) : [o.p.unit ? o.p.unit.one : ""];
+        unit.replaceChildren(...list.map((u) => h("option", { value: u, selected: u === o.p.unit?.one }, u || "(how many)")));
+        calc();
+      };
+      sel.addEventListener("change", fillUnits);
+      amt.addEventListener("input", calc);
+      unit.addEventListener("change", calc);
+      const apply = () => { const n = calc(); if (!n) { amt.focus(); return; } close(); P.setScale(r.id, n); P.toast(`Scaled to ${P.plural(n, "serving")}.`); };
+      amt.addEventListener("keydown", (e) => { if (e.key === "Enter") apply(); });
+      fillUnits();
+      return [
+        h("h3", { class: "sheet-h" }, "Scale to what I have"),
+        h("p", { class: "sheet-p" }, "Pick an ingredient and say how much of it you have. The whole recipe scales to match."),
+        sel, h("div", { class: "scale-row" }, amt, unit), note,
+        h("div", { class: "sheet-btns" }, h("button", { class: "btn ghost", type: "button", onClick: close }, "Cancel"), h("button", { class: "btn lime", type: "button", onClick: apply }, "Scale it")),
+      ];
+    }, { label: "Scale to what I have", class: "small" });
+  }
+
+  /** Everything else you can do with a recipe, with words, not just icons. */
+  function moreMenu(anchor, r) {
+    const translated = state.tr?.id === r.id;
+    P.popover(anchor, (close) => {
+      const act = (label, ic, fn, sub) => P.menuItem({ label, icon: ic, sub, onClick: () => { close(); fn(); } });
+      return [
+        act("Start cooking, step by step", "chefHat", () => P.stepper.open(shown(r))),
+        act("Remix with AI…", "wand", () => P.aitools.menu(anchor, r), "Vegetarian, lighter, quicker…"),
+        translated ? act("Show the original", "globe", () => { state.tr = null; renderDetail(); }) : act("Translate…", "globe", () => translateMenu(anchor, r), "Arabic, French, Spanish and more"),
+        state.lastLang && !translated ? act(`Translate into ${langName(state.lastLang)}`, "globe", () => translate(r, state.lastLang)) : null,
+        act("Scale to what I have…", "scale", () => scaleSheet(r)),
+        h("div", { class: "pop-sep" }),
+        act("Print", "printer", () => window.print()),
+        act("Copy as text", "copy", () => copyRecipe(r)),
+        act("Duplicate", "copy", () => { const id = P.duplicateRecipe(r.id); P.toast("Duplicated."); P.go(P.pathFor({ tag: r.tag, id, mode: "edit" })); }),
+        r.src ? act("Open the original page", "link", () => window.open(r.src, "_blank", "noopener")) : null,
+      ];
+    }, { align: "right" });
+  }
+
+  /** Jump to a part of a long recipe; it stays at the top while you scroll. */
+  const jumpEl = (r) => h("nav", { class: "jump", "aria-label": "Jump to" },
+    [["Ingredients", ".col-ing"], ["Directions", ".col-steps"], r.nut ? ["Nutrition", ".nutri"] : null, ["Notes", ".notes-wrap"], ["More like this", ".similar"]].filter(Boolean)
+      .map(([label, sel]) => h("button", { type: "button", onClick: () => {
+        const el = els.scroll.querySelector(sel);
+        if (el) els.scroll.scrollTo({ top: el.getBoundingClientRect().top - els.scroll.getBoundingClientRect().top + els.scroll.scrollTop - 58, behavior: "smooth" });
+      } }, label)));
+
+  function renderRecipe(orig) {
+    const r = shown(orig);
     const servings = P.scaleOf(r);
     els.detail.classList.toggle("cook", state.cook);
     els.top.replaceChildren(
       h("button", { class: "tagpill", type: "button", title: `Show ${P.tagName(r.tag)}`, onClick: () => P.go(P.pathFor({ tag: r.tag, id: r.id })) }, P.tagName(r.tag)),
       h("div", { class: "acts" },
         h("button", { class: "askbtn", type: "button", title: "Ask the recipe helper  ( H )", onClick: () => P.help.open(r) }, hi("sparkle"), h("span", {}, "Ask AI")),
-        actBtn("calendar", "Add to meal plan", (e) => P.plan.menu(e.currentTarget, r)),
-        bookBtn(r),
-        actBtn("printer", "Print", () => window.print()),
-        actBtn("share", "Share", () => shareRecipe(r)),
-        actBtn("copy", "Copy recipe", () => copyRecipe(r)),
+        actBtn("calendar", "Add to meal plan", (e) => P.plan.menu(e.currentTarget, orig)),
+        bookBtn(orig),
+        actBtn("share", "Share a link", () => shareRecipe(orig)),
+        actBtn("dots", "More: remix, translate, scale, print…", (e) => moreMenu(e.currentTarget, orig)),
         h("button", { class: "editbtn", type: "button", onClick: editCurrent }, hi("pencil"), "Edit")));
     els.scroll.replaceChildren(heroEl(r), bodyEl(r, servings));
     const sim = els.scroll.querySelector(".similar");
@@ -517,8 +629,11 @@
     const f = servings / (r.serves || 4);
     const anyTicked = P.checked(r.id).size > 0;
     const loading = !r.about && !r.user && !P.lib.details;
-    return h("div", { class: "recipe" },
+    return h("div", { class: "recipe", lang: r._lang || null, dir: RTL.has(r._lang) ? "rtl" : null },
       h("h1", { class: "title" }, r.title),
+      r._lang ? h("div", { class: "trbar", dir: "ltr" }, hi("globe"), h("span", {}, `Translated into ${langName(r._lang)} by AI`),
+        h("button", { class: "textbtn", type: "button", onClick: () => { state.tr = null; renderDetail(); } }, "Show the original"),
+        h("button", { class: "textbtn", type: "button", onClick: () => saveTranslation(r) }, "Save as a copy")) : null,
       r.about ? h("p", { class: "about" }, r.about) : loading ? h("p", { class: "about sk" }, h("i"), h("i")) : null,
       h("div", { class: "stats" },
         stat("clock", r.min ? P.fmtMin(r.min) : "—", "Total time"),
@@ -527,13 +642,16 @@
         stat("fire", r.kcal ? String(r.kcal) : "—", "kcal / serving")),
       P.prices.bar(r, servings),
       chipsEl(r),
-      P.diet.badge(r),
+      P.diet.badge(r._orig || r),
       cookRowEl(r),
+      jumpEl(r),
       h("div", { class: "cols" },
         h("section", { class: "col-ing" + (anyTicked ? " has-checks" : "") },
           h("div", { class: "sec-head" }, h("h2", { class: "section-h" }, "Ingredients"),
             h("button", { class: "linkbtn", type: "button", onClick: () => { P.clearChecks(r.id); renderDetail(); } }, "Uncheck all")),
-          h("div", { class: "ing-tools" }, scalerEl(r, servings), unitsEl()), ingredientsEl(r, f), shopBarEl(r, f),
+          h("div", { class: "ing-tools" }, scalerEl(r, servings), unitsEl(),
+            h("button", { class: "textbtn", type: "button", onClick: () => scaleSheet(r._orig || r) }, hi("scale"), "Scale to what I have")),
+          ingredientsEl(r, f), shopBarEl(r, f),
           nutritionEl(r)),
         h("section", { class: "col-steps" },
           h("div", { class: "sec-head" }, h("h2", { class: "section-h" }, "Directions"),
@@ -652,8 +770,9 @@
 
   /** Servings changed: redo only the pieces that depend on it, so the page does not jump. */
   function refreshScale() {
-    const r = P.recipe(P.route.id);
-    if (!r || P.route.mode !== "view") return;
+    const orig = P.recipe(P.route.id);
+    if (!orig || P.route.mode !== "view") return;
+    const r = shown(orig);                                         // keep a translation on screen while the servings change
     const servings = P.scaleOf(r), f = servings / (r.serves || 4);
     const focusLabel = document.activeElement?.closest?.(".scaler") ? [...els.scroll.querySelectorAll(".scaler button")].indexOf(document.activeElement) : -1;
     els.scroll.querySelector('[data-role="scaler"]')?.replaceWith(scalerEl(r, servings));
@@ -1059,7 +1178,7 @@
     syncQuick();
     const r = id && P.recipe(id);
     P.help.sync(mode === "view" ? r || null : null);
-    document.title = `${{ new: "New recipe", ai: "Ask AI", shop: "Shopping list", plan: "Meal plan", pantry: "What can I make?", discover: "Discover", stats: "Your kitchen", shared: "Shared recipe" }[mode] || (r ? r.title : P.tagName(tag))} · Platter`;
+    document.title = `${{ new: "New recipe", ai: "Ask AI", shop: "Shopping list", plan: "Meal plan", pantry: "What can I make?", discover: "Discover", stats: "Your kitchen", shared: "Shared recipe", settings: "Settings" }[mode] || (r ? r.title : P.tagName(tag))} · Platter`;
   }
 
   /** The Discover / Plan / Pantry / List buttons above the tiles: which one is open, and the counts. */
@@ -1132,6 +1251,10 @@
     shortcuts,
     help: () => { const r = P.route.mode === "view" && P.recipe(P.route.id); if (r) P.help.open(r); },
     cookSteps: () => { const r = P.route.mode === "view" && P.recipe(P.route.id); if (r) P.stepper.open(r); },
-    toggleTheme: () => { const dark = document.documentElement.dataset.theme === "dark"; P.setTheme(dark ? "light" : "dark"); P.toast(dark ? "Light mode." : "Dark mode."); },
+    toggleTheme: () => {
+      const dark = P.resolvedTheme() === "dark", light = P.S.ui.lightTheme || "white";
+      P.setTheme(dark ? light : "dark");
+      P.toast(dark ? `${light === "warm" ? "Warm" : "White"} mode.` : "Dark mode.");
+    },
   });
 })();

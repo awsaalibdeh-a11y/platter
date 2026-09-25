@@ -299,13 +299,17 @@
 
   /* ---------- light or dark ---------- */
   const mqDark = matchMedia("(prefers-color-scheme: dark)");
-  P.theme = () => S.ui.theme || "auto";
+  const COLORS = { white: "#ffffff", warm: "#fafaf8", dark: "#151513" };
+  P.theme = () => (S.ui.theme === "light" ? "white" : S.ui.theme || "auto");          // "light" was the old name
+  /** The theme actually showing: auto becomes white or dark, whichever the device prefers. */
+  P.resolvedTheme = () => (P.theme() === "auto" ? (mqDark.matches ? "dark" : "white") : P.theme());
   P.applyTheme = () => {
-    const dark = P.theme() === "dark" || (P.theme() === "auto" && mqDark.matches);
-    document.documentElement.dataset.theme = dark ? "dark" : "light";
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#151513" : "#fafaf8");
+    const t = P.resolvedTheme();
+    document.documentElement.dataset.theme = t;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", COLORS[t] || COLORS.white);
+    P.emit("theme", t);
   };
-  P.setTheme = (t) => { S.ui.theme = t; P.save(); P.applyTheme(); };
+  P.setTheme = (t) => { S.ui.theme = t; if (t === "white" || t === "warm") S.ui.lightTheme = t; P.save(); P.applyTheme(); };
   mqDark.addEventListener("change", () => P.applyTheme());
   P.applyTheme();
 
@@ -382,7 +386,7 @@
   };
 
   /* ---------- router: #/  ·  #/t/<tag>  ·  #/t/<tag>/r/<id>[/edit]  ·  #/new[/<tag>]  ·  #/ai  #/shop  #/plan  #/pantry ---------- */
-  P.PANES = ["discover", "ai", "shop", "plan", "pantry", "stats", "shared"];        // whole-pane tools that borrow the list column for context
+  P.PANES = ["discover", "ai", "shop", "plan", "pantry", "stats", "shared", "settings"];        // whole-pane tools that borrow the list column for context
   P.route = { tag: "chicken", id: null, mode: "view", home: true };
   P.parseRoute = () => {
     const parts = location.hash.replace(/^#\/?/, "").split("/").map(decodeURIComponent).filter(Boolean);
