@@ -107,7 +107,7 @@
       const res = await fetch("/api/ai/ask", {
         method: "POST", signal: ctrl.signal, headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          q, focus, history,
+          q, focus, history, diet: P.diet.text(),
           recipe: { title: r.title, serves: servings, min: r.min, ing: r.ing.map((l) => P.scaleLine(l, f)), steps: r.steps.map((s) => P.convertText(s)), notes: P.notesOf(r.id) },
         }),
       });

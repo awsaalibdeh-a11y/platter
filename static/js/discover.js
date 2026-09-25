@@ -60,7 +60,7 @@
   }
 
   P.panes.discover = (top, scroll, ctx) => {
-    const all = P.recipes().filter((r) => r.img);
+    const all = P.diet.filter(P.recipes()).filter((r) => r.img);
     const hour = new Date().getHours();
     const hello = hour < 5 ? "Cooking late?" : hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
 
@@ -69,11 +69,11 @@
     const planned = P.plan.on(P.plan.key(new Date())).map((e) => P.recipe(e.id)).filter(Boolean);
     const quick = daily(all.filter((r) => r.min && r.min <= 30 && MAINS.has(r.tag) && r.id !== today?.id), "quick", 14);
     const fresh = daily(all.filter((r) => +r.id >= 90001), "new", 14);
-    const again = P.inTag("made").filter((r) => r.img).slice(0, 14);
-    const favs = daily(P.inTag("fav").filter((r) => r.img), "fav", 14);
-    const chicken = daily(P.inTag("chicken").filter((r) => r.img), "chicken", 14);
+    const again = P.diet.filter(P.inTag("made")).filter((r) => r.img).slice(0, 14);
+    const favs = daily(P.diet.filter(P.inTag("fav")).filter((r) => r.img), "fav", 14);
+    const chicken = daily(P.diet.filter(P.inTag("chicken")).filter((r) => r.img), "chicken", 14);
     const veg = daily(all.filter((r) => (r.diet || []).includes("vegetarian") && MAINS.has(r.tag)), "veg", 14);
-    const sweet = daily(P.inTag("desserts").filter((r) => r.img), "sweet", 14);
+    const sweet = daily(P.diet.filter(P.inTag("desserts")).filter((r) => r.img), "sweet", 14);
 
     const counts = {};
     for (const r of P.recipes()) if (r.sub) counts[r.sub] = (counts[r.sub] || 0) + 1;
@@ -94,6 +94,10 @@
       h("header", { class: "dhead" },
         h("div", {}, h("h1", { class: "title" }, hello), h("p", { class: "lead" }, `What are we cooking today? ${new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" })}.`)),
         h("label", { class: "dsearch" }, hi("search"), search)),
+      h("div", { class: "ddiet" }, hi("leaf"),
+        P.diet.has() ? [h("span", {}, h("b", {}, "Your diet: "), P.diet.summary(), P.diet.active() ? "" : " (showing everything)"), h("button", { class: "textbtn", type: "button", onClick: () => P.diet.sheet() }, "Change")]
+          : [h("span", {}, "Eat low fat, no milk, vegetarian…? "), h("button", { class: "textbtn", type: "button", onClick: () => P.diet.sheet() }, "Set your diet")],
+        h("button", { class: "textbtn", type: "button", onClick: () => P.go("pantry") }, hi("camera"), "Snap your fridge")),
       today ? hero(today) : null,
       planned.length ? h("section", { class: "dplan" },
         h("div", { class: "drow-head" }, h("h2", {}, "On your plan today"), h("button", { class: "textbtn", type: "button", onClick: () => P.go("plan") }, "Open the plan")),

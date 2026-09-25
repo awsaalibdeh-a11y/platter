@@ -15,6 +15,13 @@ like an iPad app, in a browser.
 - **A door at the front**: on the first visit Platter asks for its creator's name. The right name (any capitalisation)
   opens it for good; a wrong one gives 30 minutes with a timer in the corner, then Platter closes behind a lock
   screen until the name is given (`static/js/gate.js`). It is stored in the visitor's browser, like everything else
+- **Your diet**: pick what you eat and avoid (vegetarian, vegan, pescatarian; no milk/dairy, no eggs, no gluten, no nuts,
+  no shellfish, no pork, no alcohol) and your goals (low fat, low carb, under 500 kcal, high protein). Lists, Discover, the
+  meal planner and "What can I make?" show only what fits; each recipe says whether it fits and, if not, which
+  ingredients are the problem, with "Remix it to fit". Every AI request follows it too. Checked against the ingredient
+  list itself (`static/js/diet.js`), with per-rule exceptions: coconut milk isn't dairy, almond milk is still a nut
+- **Snap your fridge**: take a photo of your fridge or cupboard and AI spots the food in it; the ingredients go straight
+  into "What can I make?" (and Ask AI can suggest dishes from them)
 - **Remix with AI**: "make it vegetarian / vegan / healthier / quicker / spicier / kid-friendly / air fryer…" or type your
   own change; the rewritten recipe is saved as a new one, with what changed in its notes
 - **Read a recipe in from a photo or pasted text**: snap a cookbook page, a card or a screenshot (or paste any recipe
@@ -101,7 +108,7 @@ changing colours in `style.css`.
 
 ```
 app.py                 Flask: page, cached/gzipped assets, /api/import (SSRF-guarded)
-ai.py                  /api/ai/ideas, /api/ai/recipe, /api/ai/remix, /api/ai/extract, /api/ai/ask (OpenAI) and /api/ai/photo (free photo sources)
+ai.py                  /api/ai/ideas, /api/ai/recipe, /api/ai/remix, /api/ai/extract, /api/ai/fridge, /api/ai/ask (OpenAI) and /api/ai/photo (free photo sources)
 templates/index.html   the three panes
 static/style.css       every size measured from the reference, in rem
 static/js/util.js      icons, quantity parser and scaler
@@ -113,7 +120,8 @@ static/js/plan.js      the meal plan: days, servings, "add the week to the shopp
 static/js/pantry.js    "What can I make?": ranks recipes by what is in the kitchen
 static/js/ai.js        the Ask AI pane
 static/js/gate.js      the "name the creator" door and its 30-minute timer
-static/js/aitools.js   Remix, and reading a recipe in from a photo or text
+static/js/aitools.js   Remix, reading a recipe in from a photo or text, and the fridge photo
+static/js/diet.js      your diet: the rules, checking a recipe against them, the settings sheet
 static/js/books.js     cookbooks, and the Your kitchen page
 static/js/share.js     share links that carry the recipe, and the page they open
 static/js/help.js      the recipe helper: select-to-ask, Explain, the streaming chat panel

@@ -55,7 +55,7 @@
   async function remix(r, how, label) {
     const busy = working(`Remixing ${r.title}…`, "Rewriting the ingredients and the method. This takes about ten seconds.");
     try {
-      const d = await post("/api/ai/remix", { how, recipe: { title: r.title, serves: r.serves, ing: r.ing, steps: r.steps } });
+      const d = await post("/api/ai/remix", { how, diet: P.diet.text(), recipe: { title: r.title, serves: r.serves, ing: r.ing, steps: r.steps } });
       busy.close();
       const veg = (d.diet || []).includes("vegetarian");
       const tag = veg && MEAT_TAGS.has(r.tag) ? "vegetarian" : r.tag;
@@ -109,5 +109,20 @@
     }, { label: "Paste a recipe" });
   }
 
-  P.aitools = { menu, remix, fromPhoto, fromText };
+  /* ---------- what's in the fridge? ---------- */
+  function fridge(onData) {
+    const file = h("input", { type: "file", accept: "image/*" });
+    file.addEventListener("change", async () => {
+      const f = file.files[0];
+      if (!f) return;
+      let image;
+      try { image = await P.resizeImage(f, 1400, 0.85); } catch (e) { P.toast(e.message); return; }
+      const busy = working("Looking in your fridge…", "Spotting the food you've got. This takes a few seconds.");
+      try { const d = await post("/api/ai/fridge", { image }); busy.close(); onData({ ...d, image }); }
+      catch (e) { busy.close(); P.toast(e.message, { ms: 5000 }); }
+    });
+    file.click();
+  }
+
+  P.aitools = { menu, remix, fromPhoto, fromText, fridge };
 })();

@@ -134,7 +134,7 @@
   function pickDinners(n, { diet, maxMin, favs }) {
     const since = Date.now() - 14 * 864e5;
     const planned = new Set(Object.values(P.S.plan).flat().map((e) => e.id));
-    const pool = P.recipes().filter((r) => DINNERS.has(r.tag) && r.img && (!diet || (r.diet || []).includes(diet)) && (!maxMin || (r.min && r.min <= maxMin)));
+    const pool = P.diet.filter(P.recipes()).filter((r) => DINNERS.has(r.tag) && r.img && (!diet || (r.diet || []).includes(diet)) && (!maxMin || (r.min && r.min <= maxMin)));
     const score = (r) => Math.random() * 2 + (P.isFav(r.id) ? (favs ? 4 : 1) : 0) + (P.rating(r.id) >= 4 ? 1.2 : 0) + (r.level === "Easy" ? 0.3 : 0)
       - (P.lastMade(r.id) > since ? 6 : 0) - (planned.has(r.id) ? 6 : 0);
     const ranked = pool.map((r) => [score(r), r]).sort((a, b) => b[0] - a[0]).map(([, r]) => r);

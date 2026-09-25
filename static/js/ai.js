@@ -49,7 +49,7 @@
     if (!more) { ai.ideas = []; ai.note = ""; ai.made = {}; }
     build();
     try {
-      const d = await api("/api/ai/ideas", { query: q, n: 4, tags: tags(), avoid: ai.ideas.map((i) => i.title) });
+      const d = await api("/api/ai/ideas", { query: q, n: 4, tags: tags(), avoid: ai.ideas.map((i) => i.title), diet: P.diet.text() });
       const fresh = d.ideas.map((i) => ({ ...i, photo: null, photoState: "pending" }));
       ai.ideas = more ? [...ai.ideas, ...fresh] : fresh;
       ai.note = d.note || "";
@@ -69,7 +69,7 @@
     ai.error = "";
     paintCards();
     try {
-      const d = await api("/api/ai/recipe", { title: idea.title, blurb: idea.blurb, serves: idea.serves, query: ai.q, tags: tags() });
+      const d = await api("/api/ai/recipe", { title: idea.title, blurb: idea.blurb, serves: idea.serves, query: ai.q, tags: tags(), diet: P.diet.text() });
       const tag = P.validTag(d.tag) && !P.isSpecial(d.tag) ? d.tag : P.validTag(idea.tag) ? idea.tag : "mains";
       const photo = idea.photo;
       const id = P.saveRecipe({
@@ -142,6 +142,12 @@
         input.focus();
       })),
       chip("Surprise me", () => { input.value = SURPRISE; ai.q = SURPRISE; suggest(false); }),
+      h("button", { class: "ai-chip fridge", type: "button", disabled: off, onClick: () => P.aitools.fridge((d) => {
+        if (!d.items.length) { P.toast("I couldn't spot any food in that photo."); return; }
+        input.value = `Something for dinner using what's in my fridge: ${d.items.join(", ")}`;
+        ai.q = input.value;
+        suggest(false);
+      }) }, hi("camera"), "From a photo of my fridge"),
     ];
     live = {
       input,
@@ -156,6 +162,7 @@
       h("p", { class: "lead" }, "Describe a craving, a diet, or what's in the fridge. You get a few dishes with photos, then the full recipe for the one you pick."),
       off ? h("div", { class: "banner" }, hi("sparkle"), h("div", {}, h("strong", {}, "AI isn't switched on for this site yet."),
         h("p", {}, "Whoever runs the site needs to add an OpenAI key (OPENAI_API_KEY) to the server. Everything else works without it."))) : null,
+      P.diet.has() ? h("p", { class: "ai-diet" }, hi("leaf"), "Following your diet: ", h("b", {}, P.diet.summary()), " ", h("button", { class: "textbtn", type: "button", onClick: () => P.diet.sheet() }, "Change")) : null,
       h("div", { class: "ai-form" }, input, go),
       h("div", { class: "ai-chips" }, chips),
       live.note, live.error, live.grid,

@@ -57,6 +57,7 @@
     P.on("made", onCook);
     P.on("plan", () => { syncQuick(); if (P.route.mode === "plan") renderDetail(); });
     P.on("books", onBooks);
+    P.on("diet", () => { renderList(); if (P.route.mode === "view" && P.route.id || P.route.mode === "discover" || P.route.mode === "pantry") renderDetail(); });
     P.on("units", () => P.route.mode === "view" && P.route.id && renderDetail());
     P.on("steps", (id) => id === P.route.id && P.route.mode === "view" && renderDetail());
     P.on("details", () => { if (P.route.mode === "view" && P.route.id || P.route.mode === "discover") renderDetail(); });
@@ -234,6 +235,8 @@
       h("div", { class: "pop-seg" }, seg([["auto", "Auto", "auto"], ["light", "Light", "sun"], ["dark", "Dark", "moon"]], P.theme(), (t) => { P.setTheme(t); again(); })),
       h("div", { class: "pop-h" }, "Units"),
       h("div", { class: "pop-seg" }, seg([["orig", "As written"], ["us", "US"], ["metric", "Metric"]], P.unitMode(), (u) => { P.setUnitMode(u); again(); })),
+      h("div", { class: "pop-h" }, "Diet"),
+      P.menuItem({ label: "My diet", sub: P.diet.has() ? P.diet.summary() : "Low fat, no milk, vegetarian… not set", icon: "leaf", onClick: () => { close(); P.diet.sheet(); } }),
       P.menuItem({ label: "Keyboard shortcuts", icon: "keyboard", onClick: () => { close(); shortcuts(); } }),
       h("div", { class: "pop-sep" }),
       h("div", { class: "pop-h" }, "Share & backup"),
@@ -284,6 +287,8 @@
       ...sorts.map(([k, l]) => P.menuItem({ label: l, on: P.S.ui.sort === k, onClick: () => { P.S.ui.sort = k; P.save(); renderList(); close(); } })),
       h("div", { class: "pop-sep" }),
       h("div", { class: "pop-h" }, "Show only"),
+      P.diet.has() ? P.menuItem({ label: "Fits my diet", sub: P.diet.summary(), icon: "leaf", on: P.diet.active(), onClick: () => { P.diet.setOn(!P.diet.active()); close(); } }) : null,
+      P.menuItem({ label: P.diet.has() ? "Edit my diet…" : "Set my diet…", sub: P.diet.has() ? null : "Low fat, no milk, vegetarian…", icon: "leaf", onClick: () => { close(); P.diet.sheet(); } }),
       P.menuItem({ label: "Favorites", icon: "star", on: state.filters.fav, onClick: () => { state.filters.fav = !state.filters.fav; renderList(); close(); } }),
       P.menuItem({ label: "With a video", icon: "play", on: state.filters.video, onClick: () => { state.filters.video = !state.filters.video; renderList(); close(); } }),
       P.menuItem({ label: "Easy", icon: "bars", on: state.filters.easy, onClick: () => { state.filters.easy = !state.filters.easy; renderList(); close(); } }),
@@ -314,6 +319,7 @@
     if (f.diet) list = list.filter((r) => (r.diet || []).includes(f.diet));
     if (f.easy) list = list.filter((r) => r.level === "Easy");
     if (f.quick) list = list.filter((r) => r.min && r.min <= 30);
+    list = P.diet.filter(list);
     list = P.search(list, state.q);
     return P.keepsOrder(tag) ? list : P.sort(list, P.S.ui.sort);
   }
@@ -342,6 +348,7 @@
     if (f.diet) chips.push(chip(DIETS[f.diet] || f.diet, () => (f.diet = "")));
     if (f.easy) chips.push(chip("Easy", () => (f.easy = false)));
     if (f.quick) chips.push(chip("Under 30 min", () => (f.quick = false)));
+    if (P.diet.active()) chips.push(h("button", { class: "fchip diet", type: "button", title: `Your diet: ${P.diet.summary()}. Tap to show everything.`, onClick: () => { P.diet.setOn(false); P.toast("Showing every recipe. Turn “Fits my diet” back on from the sort menu."); } }, hi("leaf"), "Fits my diet", hi("x")));
     if (state.q && P.route.tag !== "all") {
       // the search box is scoped to the tag you are in; say so when the rest of the library has more
       const have = new Set(state.shown.map((r) => r.id));
@@ -514,6 +521,7 @@
         stat("bars", r.level || "—", "Difficulty"),
         stat("fire", r.kcal ? String(r.kcal) : "—", "kcal / serving")),
       chipsEl(r),
+      P.diet.badge(r),
       cookRowEl(r),
       h("div", { class: "cols" },
         h("section", { class: "col-ing" + (anyTicked ? " has-checks" : "") },
@@ -552,7 +560,7 @@
   function fillSimilar(box, r) {
     const mine = P.ingredientNames(r);
     const scored = [];
-    for (const x of P.recipes()) {
+    for (const x of P.diet.filter(P.recipes())) {
       if (x.id === r.id || !x.img) continue;
       let s = (x.tag === r.tag ? 2 : 0) + (x.sub && x.sub === r.sub ? 1.5 : 0);
       if (s === 0 && !mine.size) continue;
@@ -931,7 +939,7 @@
   /** Open a random recipe: from the tag you are in, or from everything when you are not in one. */
   function surprise() {
     const inTag = realTag() && state.shown.length ? realTag() : null;
-    const pool = inTag ? state.shown : P.recipes();
+    const pool = inTag ? state.shown : P.diet.filter(P.recipes());
     const pick = pool[Math.floor(Math.random() * pool.length)];
     if (!pick) return;
     P.go(P.pathFor({ tag: inTag || "all", id: pick.id }));

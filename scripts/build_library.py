@@ -317,7 +317,8 @@ def main():
             r["diet"] = d["diet"]
         if d.get("nut"):
             r["kcal"] = d["nut"][0]
-        extra = {k: v for k, v in (("about", d.get("about")), ("serve", d.get("serve")), ("tip", tip), ("nut", d.get("nut"))) if v}
+            r["nut"] = d["nut"]                     # [kcal, protein, carbs, fat] per serving: the diet filters need it up front
+        extra = {k: v for k, v in (("about", d.get("about")), ("serve", d.get("serve")), ("tip", tip)) if v}
         if extra:
             details[r["id"]] = extra
 

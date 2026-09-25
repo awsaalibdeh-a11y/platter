@@ -15,7 +15,7 @@
   /* ---------- persisted state ---------- */
   const blank = () => ({
     fav: {}, user: {}, edits: {}, gone: {}, checks: {}, scale: {}, notes: {}, steps: {},
-    rate: {}, made: {}, plan: {}, pantry: { have: [], staples: true }, books: [],
+    rate: {}, made: {}, plan: {}, pantry: { have: [], staples: true }, books: [], diet: { keys: [], on: true },
     tags: { order: [], names: {}, covers: {}, hidden: {}, custom: [] },
     shop: { recipes: [], extra: [], done: {}, hidden: {} },
     recent: [],

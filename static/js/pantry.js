@@ -56,7 +56,7 @@
     if (!tws.length) return [];
     const coll = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });
     const out = [];
-    for (const r of P.recipes()) {
+    for (const r of P.diet.filter(P.recipes())) {
       const lines = prep(r).filter((l) => !l.optional);
       if (!lines.length) continue;
       let have = 0;
@@ -73,7 +73,8 @@
   }
 
   /* ---------- the pane ---------- */
-  let shown = 30;                                                        // how many results are on screen
+  let shown = 30;
+  let fridge = null;                                                     // the last photo: { image, items, note }                                                        // how many results are on screen
 
   P.panes.pantry = (top, scroll, ctx) => {
     const S = P.S.pantry;
@@ -102,6 +103,22 @@
     input.addEventListener("paste", () => setTimeout(commit, 0));
 
     live.have = h("div", { class: "pan-have" });
+    live.fridge = h("div", { class: "fridge-card-wrap" });
+    const snap = () => P.aitools.fridge((d) => {
+      fridge = d;
+      if (d.items.length) add(d.items.join(","));
+      paintFridge();
+      P.toast(d.items.length ? `Spotted ${P.plural(d.items.length, "thing")} in your photo and added them.` : "I couldn't spot any food in that photo.", { ms: 4000 });
+    });
+    const paintFridge = () => live.fridge.replaceChildren(...(fridge ? [h("div", { class: "fridge-card" },
+      h("img", { src: fridge.image, alt: "Your photo" }),
+      h("div", {},
+        h("b", {}, fridge.items.length ? `Seen in your photo: ${P.plural(fridge.items.length, "thing")}` : "No food spotted in your photo"),
+        fridge.note ? h("p", {}, fridge.note) : null,
+        h("div", { class: "fridge-acts" },
+          fridge.items.length ? h("button", { class: "btn lime sm", type: "button", onClick: () => P.views.openAI(`Something for dinner using what's in my fridge: ${fridge.items.join(", ")}`) }, hi("sparkle"), "Ask AI for dishes") : null,
+          h("button", { class: "textbtn", type: "button", onClick: () => { fridge = null; paintFridge(); } }, "Hide"))))] : []));
+    paintFridge();
     live.quick = h("div", { class: "ai-chips" });
     live.head = h("div", { class: "pan-head" });
     live.list = h("div", { class: "pan-list" });
@@ -173,6 +190,10 @@
       h("h1", { class: "title" }, "What can I make?"),
       h("p", { class: "lead" }, "Add what's in your kitchen. Every recipe in your library is ranked by how much of it you already have, so you shop for as little as possible."),
       h("div", { class: "pan-add" }, input, h("button", { class: "btn lime", type: "button", onClick: commit }, hi("plus"), "Add")),
+      h("div", { class: "fridge-row" },
+        h("button", { class: "btn fridge-btn", type: "button", onClick: snap }, hi("camera"), "Snap your fridge"),
+        h("span", {}, "Take a photo of your fridge or cupboard: AI spots the food in it and adds it here.")),
+      live.fridge,
       live.have, live.quick,
       h("div", { class: "pan-staples" }, staples, h("span", {}, "I always have salt, pepper, oil, water, sugar, flour and butter")),
       live.head, live.list, live.more));

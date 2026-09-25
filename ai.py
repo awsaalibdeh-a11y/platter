@@ -163,6 +163,12 @@ def diet_labels(labels, ingredients):
     return out
 
 
+def _diet(body):
+    """The cook's own diet (set in the app), as a line every prompt can follow; "" when they have none."""
+    d = _s(body.get("diet"), 400)
+    return f"\nThe cook's diet, which you must always respect: {d}." if d else ""
+
+
 def _tags(body):
     """The client's own tags (they can rename and add), validated; the defaults if none came."""
     out = []
@@ -225,7 +231,7 @@ def ideas():
     n = _int(body.get("n"), 4, 1, 6)
     avoid = "; ".join(_s(t, 60) for t in (body.get("avoid") or [])[:12]) or "none"
     try:
-        data = _ask(IDEAS_PROMPT.format(n=n, tags=", ".join(f"{i}: {nm}" for i, nm in tags), avoid=avoid), query, 1400)
+        data = _ask(IDEAS_PROMPT.format(n=n, tags=", ".join(f"{i}: {nm}" for i, nm in tags), avoid=avoid), query + _diet(body), 1400)
     except AIError as exc:
         return jsonify(error=str(exc)), exc.status
     out, seen = [], set()
@@ -258,7 +264,7 @@ def recipe():
     tags = _tags(body)
     ids = {t[0] for t in tags}
     serves = _int(body.get("serves"), 4, 1, 24) or 4
-    user = f"Dish: {title}. Servings: {serves}. Context: {_s(body.get('blurb'), 160)}. The person asked: {_s(body.get('query'), 240)}"
+    user = f"Dish: {title}. Servings: {serves}. Context: {_s(body.get('blurb'), 160)}. The person asked: {_s(body.get('query'), 240)}" + _diet(body)
     try:
         data = _ask(RECIPE_PROMPT.format(tags=", ".join(f"{i}: {nm}" for i, nm in tags)), user, 2800)
     except AIError as exc:
@@ -350,7 +356,7 @@ def ask():
     notes = _s(rec.get("notes"), 500)
     if notes:
         text += f"\nThe cook's own notes: {notes}"
-    messages = [{"role": "system", "content": HELP_PROMPT.format(recipe=text)}]
+    messages = [{"role": "system", "content": HELP_PROMPT.format(recipe=text) + _diet(body)}]
     for turn in (body.get("history") or [])[-8:]:
         said = _s((turn or {}).get("text"), 1500) if isinstance(turn, dict) else ""
         if said:
@@ -550,7 +556,7 @@ def remix():
     steps = [_s(x, 700) for x in (rec.get("steps") or [])[:25] if isinstance(x, str)]
     serves = _int(rec.get("serves"), 4, 1, 24) or 4
     text = "\n".join(["THE RECIPE", title, f"Serves {serves}", "Ingredients:", *(f"- {i}" for i in ings),
-                      "Method:", *(f"{n}. {x}" for n, x in enumerate(steps, 1)), "", f"THE CHANGE THE COOK WANTS: {how}"])
+                      "Method:", *(f"{n}. {x}" for n, x in enumerate(steps, 1)), "", f"THE CHANGE THE COOK WANTS: {how}"]) + _diet(body)
     try:
         data = _ask(REMIX_PROMPT, text, 3400, read_timeout=45, tries=1)
     except AIError as exc:
@@ -591,3 +597,37 @@ def extract():
     return jsonify(title=_s(data.get("title"), 90) or "Untitled recipe", sub=_s(data.get("cuisine"), 24),
                    min=_int(data.get("minutes"), 0, 0, 1440) or None, serves=_int(data.get("serves"), 4, 1, 99) or 4,
                    ing=ings, steps=steps, **details(data, ings))
+
+
+# ---------- what's in the fridge? ----------
+FRIDGE_PROMPT = """You look at a photo of the inside of a fridge, a cupboard, a pantry shelf or groceries on a counter, and list the food a cook could use, for an app that suggests recipes from it.
+- Short plain names the way a recipe would say them: "eggs", "milk", "cheddar", "greek yogurt", "spinach", "chicken breast", "tomatoes", "lemon", "butter", "ketchup".
+- Name the food itself, not its packaging, cut or brand: "chicken" not "chicken packaged", "pineapple" not "pineapple slices", "ham" not "sliced deli meat" when you can tell.
+- Only what you can really see, or read on a label. Leave out anything you would be guessing at, drinks that aren't cooking ingredients, and non-food.
+- At most 30, the most useful for cooking first.
+- "note": one short, useful sentence, e.g. what looks like it should be used up soon. If there's no food in the photo, an empty list and a note saying what you see.
+Return ONLY JSON: {"items": [str], "note": str}"""
+
+
+@bp.post("/api/ai/fridge")
+def fridge():
+    body = request.get_json(silent=True) or {}
+    image = str(body.get("image") or "")
+    if not image or len(image) > 7_000_000 or not re.match(r"^data:image/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]", image):
+        return jsonify(error="Add a photo of your fridge or cupboard."), 400
+    if not _configured():
+        return jsonify(error="AI isn't switched on for this site yet.", code="off"), 503
+    if _limited("llm"):
+        return jsonify(error="That's a lot of AI requests. Give it a little while."), 429
+    user = [{"type": "text", "text": "What food can you see in this photo?"}, {"type": "image_url", "image_url": {"url": image, "detail": "high"}}]
+    try:
+        data = _ask(FRIDGE_PROMPT, user, 1500, read_timeout=45, tries=1)
+    except AIError as exc:
+        return jsonify(error=str(exc)), exc.status
+    items, seen = [], set()
+    for x in data.get("items") or []:
+        name = re.sub(r"[^\w\s'&-]", "", _s(x, 30).lower()).strip()
+        if name and name not in seen:
+            seen.add(name)
+            items.append(name)
+    return jsonify(items=items[:30], note=_s(data.get("note"), 200))
