@@ -823,6 +823,10 @@
     } else {
       if (!P.validTag(raw.tag)) return P.go("", { replace: true });
       if (raw.id && !P.recipe(raw.id)) return P.go(P.pathFor({ tag: raw.tag }), { replace: true });
+      // a recipe that now lives in another tag (a link shared while every chicken dish was under Poultry, or your
+      // last-viewed spot from before): follow it, rather than show it beside a list it is not in
+      const moved = raw.id && !P.isSpecial(raw.tag) ? P.recipe(raw.id) : null;
+      if (moved && moved.tag !== raw.tag) return P.go(P.pathFor({ tag: moved.tag, id: moved.id, mode: raw.mode }), { replace: true });
       P.route = { tag: raw.tag, id: raw.id, mode: raw.mode, home: false };
     }
 
