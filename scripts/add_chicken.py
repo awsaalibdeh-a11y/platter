@@ -171,6 +171,7 @@ PHOTO_OVERRIDES = {
     "Chicken Adobo": "Chicken adobo.jpg",
     "Vietnamese Lemongrass Chicken": "Lemongrass chicken at Quan Nem Ninh Hoa, Sacramento.jpg",
     "Turkey Chili": "Turkey Chili.jpg",
+    "Khao Man Gai": "Khao Man Gai at Nong's Khao Man Gai.jpg",                    # it had borrowed Hainanese Chicken Rice's photo
     "Crispy Duck Breast with Cherry Sauce": "Roast Duck breast with a cherry sauce, dauphinoise potatoes, cauliflower cheese, broccoli, peas & beans (47953415966).jpg",
 }
 

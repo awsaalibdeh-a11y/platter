@@ -93,6 +93,16 @@ The pictures cost nothing and need no key: real photographs, looked up in order 
 article, a Wikimedia Commons search, Openverse, then TheMealDB. Each is checked against the dish's name so a
 "honey garlic salmon" never gets an air fryer, and the source is credited on the photo.
 
+## Tests
+
+```bash
+python -m unittest discover tests     # the server: pages, assets, import guard, AI input checks, prices, library integrity
+node --test tests/logic.test.js       # the recipe logic: scaling, units, shopping list, diet rules, prices, tags
+```
+
+Neither spends anything: the AI endpoints are tested with no key, and the browser scripts run in a small stand-in
+for a browser.
+
 ## The sample library
 
 `static/data/library.json` is built from [TheMealDB](https://www.themealdb.com) by
