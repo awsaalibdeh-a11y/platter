@@ -12,6 +12,7 @@
   const track = (nodes, onClose) => {
     const prev = document.activeElement;
     const onKey = (e) => {
+      if (e.target.closest?.(".helper")) return;                  // the helper panel sits above everything and handles its own keys
       if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); close(); }
       else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         const items = [...nodes.pop.querySelectorAll?.(".pop-item") || []];
@@ -81,6 +82,16 @@
     layer().append(scrim, sheet);
     queueMicrotask(() => (sheet.querySelector("[data-autofocus]") || sheet.querySelector("input, textarea, button"))?.focus({ preventScroll: true }));
     return { close, el: sheet };
+  };
+
+  /** A layer that fills the screen (cooking step by step). build(close) returns what goes in it. */
+  P.fullscreen = (build, opts = {}) => {
+    P.closeOverlay();
+    const root = h("div", { class: "fullscreen" + (opts.class ? ` ${opts.class}` : ""), role: "dialog", "aria-modal": "true", "aria-label": opts.label || "Dialog" });
+    const close = track({ all: [root], pop: root }, opts.onClose);
+    root.append(...[build(close)].flat(Infinity).filter(Boolean));
+    layer().append(root);
+    return { close, el: root };
   };
 
   P.confirm = ({ title, body, ok = "OK", cancel = "Cancel", danger = false }) =>

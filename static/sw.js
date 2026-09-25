@@ -15,7 +15,7 @@ const MEDIA_MAX = 600;                    // photos kept; the oldest go first
 self.addEventListener("install", (event) => {
   event.waitUntil((async () => {
     const cache = await caches.open(APP);
-    const urls = new Set(["/", "/manifest.webmanifest", `/static/data/library.json?v=${V}`]);
+    const urls = new Set(["/", "/manifest.webmanifest", `/static/data/library.json?v=${V}`, `/static/data/details.json?v=${V}`]);
     try {                                  // whatever the page links to under /static/ is what the app needs
       const html = await (await fetch("/", { cache: "no-store" })).text();
       for (const m of html.matchAll(/(?:src|href)="(\/static\/[^"]+)"/g)) urls.add(m[1]);

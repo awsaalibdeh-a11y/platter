@@ -19,7 +19,16 @@
   <link rel="preconnect" href="https://www.themealdb.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ v }}">
-  <script>window.PLATTER = { v: "{{ v }}" };</script>
+  <link rel="stylesheet" href="{{ url_for('static', filename='dark.css') }}?v={{ v }}">
+  <script>
+    window.PLATTER = { v: "{{ v }}" };
+    // pick light or dark before the first paint, so a dark-mode visitor never sees a white flash
+    try {
+      var t = (JSON.parse(localStorage.getItem("platter.v1") || "{}").ui || {}).theme || "auto";
+      var dark = t === "dark" || (t === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
+      document.documentElement.dataset.theme = dark ? "dark" : "light";
+    } catch (e) { /* storage blocked: light */ }
+  </script>
 </head>
 <body>
   <div class="app" id="app" data-nav="detail" data-side="open">
@@ -35,10 +44,16 @@
         <div class="brand-actions">
           <button class="cbtn" id="btn-tags" type="button" aria-label="Edit tags" title="Edit tags" aria-pressed="false" data-icon="pencil"></button>
           <button class="cbtn" id="btn-folder" type="button" aria-label="Collections" title="All recipes, favorites, recent" aria-haspopup="menu" data-icon="folder"></button>
-          <button class="cbtn" id="btn-people" type="button" aria-label="Share and backup" title="Share and backup" aria-haspopup="menu" data-icon="peopleFill"></button>
+          <button class="cbtn" id="btn-people" type="button" aria-label="Settings, share and backup" title="Settings, share and backup" aria-haspopup="menu" data-icon="peopleFill"></button>
           <button class="cbtn lime" id="btn-add" type="button" aria-label="Add a recipe" title="Add a recipe  ( N )" data-icon="plus"></button>
         </div>
       </div>
+      <nav class="quick" aria-label="Tools">
+        <button class="qbtn" type="button" data-go="discover" title="Discover  ( D )"><span data-icon="compass"></span>Discover</button>
+        <button class="qbtn" type="button" data-go="plan" title="Meal plan  ( M )"><span data-icon="calendar"></span>Plan<b class="qn" hidden></b></button>
+        <button class="qbtn" type="button" data-go="pantry" title="What can I make?  ( P )"><span data-icon="jar"></span>Pantry</button>
+        <button class="qbtn" type="button" data-go="shop" title="Shopping list  ( S )"><span data-icon="cart"></span>List<b class="qn" hidden></b></button>
+      </nav>
       <div class="tiles" id="tiles" role="list">
         <div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div>
         <div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div>
@@ -93,6 +108,9 @@
   <script defer src="{{ url_for('static', filename='js/shop.js') }}?v={{ v }}"></script>
   <script defer src="{{ url_for('static', filename='js/plan.js') }}?v={{ v }}"></script>
   <script defer src="{{ url_for('static', filename='js/pantry.js') }}?v={{ v }}"></script>
+  <script defer src="{{ url_for('static', filename='js/help.js') }}?v={{ v }}"></script>
+  <script defer src="{{ url_for('static', filename='js/steps.js') }}?v={{ v }}"></script>
+  <script defer src="{{ url_for('static', filename='js/discover.js') }}?v={{ v }}"></script>
   <script defer src="{{ url_for('static', filename='js/ai.js') }}?v={{ v }}"></script>
   <script defer src="{{ url_for('static', filename='js/views.js') }}?v={{ v }}"></script>
   <script defer src="{{ url_for('static', filename='js/main.js') }}?v={{ v }}"></script>

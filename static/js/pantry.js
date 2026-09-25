@@ -46,6 +46,8 @@
     }
     return lines;
   };
+  /** The ingredients a recipe really turns on (salt, oil and the like left out): what "You might also like" compares. */
+  P.ingredientNames = (r) => new Set(prep(r).filter((l) => !l.staple && !l.optional).map((l) => l.name));
   const matches = (termWords, line) => termWords.every((w) => line.w.has(w)) && !(NOT_THE_THING.has(line.tail) && !termWords.includes(line.tail));
 
   /** Every recipe that uses at least one of the terms, the ones that need the least shopping first. */

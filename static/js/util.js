@@ -74,6 +74,18 @@
     shuffle: '<path d="M3.5 7.5h3.4c1.7 0 3 .8 3.9 2.3l2.4 4.4c.9 1.5 2.2 2.3 3.9 2.3h3.4"/><path d="M3.5 16.5h3.4c1.1 0 2.1-.4 2.8-1.1M13.4 8.7c.8-.8 1.7-1.2 2.8-1.2h4.3"/><path d="M18 5l2.5 2.5L18 10M18 14l2.5 2.5L18 19"/>',
     jar: '<path d="M8 3.6h8v2.3H8z"/><path d="M7 5.9h10v12.9a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V5.9z"/><path d="M7 10.6h10M7 15h10"/>',
     chefHat: '<path d="M7.6 16.6a3.9 3.9 0 0 1-.9-7.6 4.4 4.4 0 0 1 8.6-.5 3.9 3.9 0 0 1 1 8.1"/><path d="M7.6 14.6v5.2h8.8v-5.2M7.6 17.4h8.8"/>',
+    compass: '<circle cx="12" cy="12" r="8.6"/><path d="M15.4 8.6l-1.9 4.9-4.9 1.9 1.9-4.9 4.9-1.9z"/>',
+    stop: '<rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/>',
+    bars: '<path d="M6 18.5v-4M12 18.5v-8M18 18.5V6"/>',
+    volume: '<path d="M4.5 9.6v4.8h3.3l4.4 3.8V5.8L7.8 9.6H4.5z"/><path d="M15.4 9.2a4 4 0 0 1 0 5.6M17.9 6.8a7.4 7.4 0 0 1 0 10.4"/>',
+    volumeOff: '<path d="M4.5 9.6v4.8h3.3l4.4 3.8V5.8L7.8 9.6H4.5z"/><path d="M15.6 9.6l4.8 4.8M20.4 9.6l-4.8 4.8"/>',
+    help: '<circle cx="12" cy="12" r="8.6"/><path d="M9.6 9.6a2.5 2.5 0 0 1 4.9.7c0 1.7-2.5 2.2-2.5 3.8"/><circle cx="12" cy="17" r=".9" fill="currentColor" stroke="none"/>',
+    leaf: '<path d="M5.5 18.5C5 10 10.4 5.2 19 5c.3 8.6-4.4 14-12.6 13.6"/><path d="M5.5 18.5c3.2-4.4 6.4-7 9.6-8.6"/>',
+    sun: '<circle cx="12" cy="12" r="3.9"/><path d="M12 2.8v2.1M12 19.1v2.1M2.8 12h2.1M19.1 12h2.1M5.5 5.5L7 7M17 17l1.5 1.5M5.5 18.5L7 17M17 7l1.5-1.5"/>',
+    moon: '<path d="M19.4 14.6A7.9 7.9 0 0 1 9.4 4.6 7.9 7.9 0 1 0 19.4 14.6z"/>',
+    auto: '<circle cx="12" cy="12" r="8.4"/><path d="M12 3.6v16.8A8.4 8.4 0 0 0 12 3.6z" fill="currentColor"/>',
+    keyboard: '<rect x="2.8" y="6" width="18.4" height="12" rx="2.4"/><path d="M6.5 9.6h.1M10 9.6h.1M13.5 9.6h.1M17 9.6h.1M6.5 12.8h.1M17 12.8h.1M9 15.2h6"/>',
+    fire: '<path d="M12 3.2c.7 3.4 5.2 5.2 5.2 10.2a5.2 5.2 0 0 1-10.4 0c0-1.9.9-3.3 2-4.4.3 1.5 1.1 2.3 2 2.7C10.6 8.8 10.5 6 12 3.2z"/>',
   };
   P.icon = (name, cls = "") =>
     `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ""}</svg>`;

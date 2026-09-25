@@ -79,9 +79,9 @@ def static_files(filename):
 
 def _asset_version():
     """Changes whenever a shipped file does, so the browser can cache every asset forever."""
-    files = ["static/style.css", "static/data/library.json", "static/sw.js"]
+    files = ["static/style.css", "static/dark.css", "static/data/library.json", "static/data/details.json", "static/sw.js"]
     files += [f"static/js/{n}" for n in os.listdir(os.path.join(BASE, "static", "js"))]
-    return str(int(max(os.path.getmtime(os.path.join(BASE, f)) for f in files)))
+    return str(int(max(os.path.getmtime(p) for p in (os.path.join(BASE, f) for f in files) if os.path.exists(p))))
 
 
 

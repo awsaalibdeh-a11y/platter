@@ -19,7 +19,7 @@
     tags: { order: [], names: {}, covers: {}, hidden: {}, custom: [] },
     shop: { recipes: [], extra: [], done: {}, hidden: {} },
     recent: [],
-    ui: { sidebar: true, sort: "az", last: null, units: "orig" },
+    ui: { sidebar: true, sort: "az", last: null, units: "orig", theme: "auto", speak: false },
   });
   const merge = (base, extra) => {
     for (const k of Object.keys(extra || {})) {
@@ -58,6 +58,19 @@
     for (const r of data.recipes) P.lib.seedById[r.id] = r;
     P.lib.ready = true;
     dirty = true;
+  };
+
+  /** Descriptions, tips, serving ideas and nutrition: fetched after the first screen, then merged into the seed recipes. */
+  P.loadDetails = async () => {
+    try {
+      const res = await fetch(`/static/data/details.json?v=${window.PLATTER.v}`);
+      if (!res.ok) return;
+      const all = await res.json();
+      for (const [id, d] of Object.entries(all)) { const r = P.lib.seedById[id]; if (r) Object.assign(r, d); }
+      P.lib.details = true;
+      dirty = true;
+      P.emit("details");
+    } catch { /* offline on a first visit: the recipes work without their descriptions */ }
   };
 
   let dirty = true;
@@ -248,6 +261,18 @@
     P.save(); P.emit("made", id);
   };
 
+  /* ---------- light or dark ---------- */
+  const mqDark = matchMedia("(prefers-color-scheme: dark)");
+  P.theme = () => S.ui.theme || "auto";
+  P.applyTheme = () => {
+    const dark = P.theme() === "dark" || (P.theme() === "auto" && mqDark.matches);
+    document.documentElement.dataset.theme = dark ? "dark" : "light";
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", dark ? "#151513" : "#fafaf8");
+  };
+  P.setTheme = (t) => { S.ui.theme = t; P.save(); P.applyTheme(); };
+  mqDark.addEventListener("change", () => P.applyTheme());
+  P.applyTheme();
+
   /* ---------- units: as written, US, or metric ---------- */
   P.unitMode = () => S.ui.units || "orig";
   P.setUnitMode = (mode) => { S.ui.units = mode; P.save(); P.emit("units", mode); };
@@ -269,10 +294,15 @@
       video: (rec.video || "").trim(),
       cr: rec.cr || "",                       // who to thank for a photo that is not ours
       crl: rec.crl || "",
-      tip: rec.tip || "",                     // the one-line tip some sample recipes carry
       ing: rec.ing || [],
       steps: rec.steps || [],
     };
+    // catalogue details: kept only when there is something, so an edit made before details.json arrived
+    // doesn't blank out the sample recipe's description
+    for (const k of ["about", "level", "serve", "tip", "diet", "nut", "kcal"]) {
+      const v = rec[k];
+      if (v && (!Array.isArray(v) || v.length)) clean[k] = typeof v === "string" ? v.trim() : v;
+    }
     // a new base yield makes an old "scale to 12" override meaningless
     if (P.recipe(id) && P.recipe(id).serves !== clean.serves) delete S.scale[id];
     if (P.lib.seedById[id]) S.edits[id] = clean;
@@ -314,7 +344,7 @@
   };
 
   /* ---------- router: #/  ·  #/t/<tag>  ·  #/t/<tag>/r/<id>[/edit]  ·  #/new[/<tag>]  ·  #/ai  #/shop  #/plan  #/pantry ---------- */
-  P.PANES = ["ai", "shop", "plan", "pantry"];                    // whole-pane tools that borrow the list column for context
+  P.PANES = ["discover", "ai", "shop", "plan", "pantry"];        // whole-pane tools that borrow the list column for context
   P.route = { tag: "chicken", id: null, mode: "view", home: true };
   P.parseRoute = () => {
     const parts = location.hash.replace(/^#\/?/, "").split("/").map(decodeURIComponent).filter(Boolean);

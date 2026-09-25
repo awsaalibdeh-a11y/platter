@@ -23,6 +23,11 @@
       case "p": P.views.openPantry(); break;
       case "m": P.views.openPlan(); break;
       case "r": P.views.surprise(); break;
+      case "d": P.views.openDiscover(); break;
+      case "h": P.views.help(); break;
+      case "g": P.views.cookSteps(); break;
+      case "t": P.views.toggleTheme(); break;
+      case "?": P.views.shortcuts(); break;
       case "[": P.views.toggleSidebar(); break;
       default:
     }
@@ -41,5 +46,6 @@
     try { await P.loadLibrary(); }
     catch (e) { console.error(e); P.views.fail(); return; }
     P.views.start();
+    P.loadDetails();                        // descriptions, tips and nutrition: after the first screen is up
   })();
 })();

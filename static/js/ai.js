@@ -76,6 +76,7 @@
         title: d.title || idea.title, tag, sub: d.sub || idea.sub,
         img: photo?.url || "", cr: photo?.credit || "", crl: photo?.link || "",
         dom: "AI recipe", min: d.min || idea.min || null, serves: d.serves || idea.serves || 4, ing: d.ing, steps: d.steps,
+        about: d.about, level: d.level, serve: d.serve, diet: d.diet, nut: d.nut, kcal: d.kcal,
       });
       if (d.notes) P.setNotes(id, d.notes);
       ai.made[idea.title] = id;

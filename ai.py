@@ -16,14 +16,15 @@ from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import quote
 
 import requests
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, Response, jsonify, request
 
 bp = Blueprint("ai", __name__)
 log = logging.getLogger("platter.ai")
 
 MODEL = os.environ.get("OPENAI_MODEL", "gpt-5")
 EFFORT = os.environ.get("OPENAI_REASONING_EFFORT", "minimal")     # the fastest tier that still gives clean JSON
-DAILY_LIMIT = int(os.environ.get("AI_DAILY_LIMIT", "400"))         # a ceiling on what a public URL can spend
+DAILY_LIMIT = int(os.environ.get("AI_DAILY_LIMIT", "600"))         # a ceiling on what a public URL can spend
+OPENAI_URL = "https://api.openai.com/v1/chat/completions"
 UA = {"User-Agent": "PlatterRecipeBox/1.0 (https://github.com/awsaalibdeh-a11y/platter)", "Accept": "application/json"}
 
 DEFAULT_TAGS = [("appetizers", "Appetizers"), ("soup", "Soup"), ("salad", "Salad"), ("chicken", "Chicken"), ("poultry", "Turkey & Duck"), ("beef", "Beef"),
@@ -40,7 +41,7 @@ def _configured():
 _lock = threading.Lock()
 _hits = {}
 _day = {"date": "", "n": 0}
-LIMITS = {"llm": (40, 3600), "photo": (300, 3600)}
+LIMITS = {"llm": (40, 3600), "chat": (90, 3600), "photo": (300, 3600)}
 
 
 def _limited(kind):
@@ -54,7 +55,7 @@ def _limited(kind):
             return True
         bucket.append(now)
         _hits[(kind, ip)] = bucket
-        if kind == "llm":
+        if kind in ("llm", "chat"):
             today = time.strftime("%Y-%m-%d")
             if _day["date"] != today:
                 _day.update(date=today, n=0)
@@ -98,7 +99,7 @@ def _ask(system, user, max_tokens):
     resp = None
     for attempt in range(2):
         try:
-            resp = requests.post("https://api.openai.com/v1/chat/completions",
+            resp = requests.post(OPENAI_URL,
                                  headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"},
                                  json=body, timeout=(6, 25))
             break
@@ -123,6 +124,44 @@ def _int(value, default=0, lo=0, hi=100000):
         return default
 
 
+# ---------- diet labels: the AI proposes, the ingredient list has the last word ----------
+DIETS = ("vegetarian", "vegan", "gluten-free", "dairy-free", "spicy")
+_NOT_REALLY = re.compile(
+    r"(?:coconut|almond|soy|oat|rice|cashew|vegan|plant[- ]based)\s+(?:milk|cream|yog\w*|butter|cheese)|(?:peanut|almond|cashew|cocoa|nut|apple|"
+    r"sunflower|vegan)\s+butter|butter\s*beans?|cream of tartar|gluten[- ]free\s+[\w-]+(?:\s+[\w-]+)?|rice (?:flour|noodles?|paper|vermicelli)|"
+    r"corn\s*(?:flour|starch|tortillas?)|cornflour|chickpea flour|gram flour|almond flour|buckwheat|tamari|egg[- ]?plant", re.I)
+_MEAT = re.compile(
+    r"\b(beef|steak|pork|bacon|ham|gammon|sausages?|chorizo|pancetta|prosciutto|salami|pepperoni|lamb|mutton|goat|veal|venison|chicken|"
+    r"turkey|duck|goose|quail|hens?|liver|mince|meat|meatballs?|oxtail|fish|salmon|tuna|cod|haddock|trout|mackerel|sardines?|anchov\w*|"
+    r"prawns?|shrimps?|crab|lobster|scallops?|mussels?|clams?|oysters?|squid|calamari|octopus|gelatin\w*|lard|suet|dashi|bonito|"
+    r"worcestershire)\b|fish sauce|oyster sauce|(?:chicken|beef|fish|meat|bone|veal) (?:stock|broth)", re.I)
+_ANIMAL = re.compile(r"\b(eggs?|yolks?|whites?|honey|milk|butter|cream|cheese|cheddar|parmesan|mozzarella|feta|paneer|ricotta|halloumi|"
+                     r"mascarpone|yogh?urt|ghee|buttermilk|mayonnaise|mayo|crème fraîche|creme fraiche|condensed milk)\b", re.I)
+_DAIRY = re.compile(r"\b(milk|butter|cream|cheese|cheddar|parmesan|mozzarella|feta|paneer|ricotta|halloumi|mascarpone|yogh?urt|ghee|"
+                    r"buttermilk|crème fraîche|creme fraiche|condensed milk)\b", re.I)
+_GLUTEN = re.compile(
+    r"\b(flour|bread|breadcrumbs?|panko|pasta|spaghetti|noodles?|macaroni|couscous|bulgur|barley|rye|beer|ale|soy sauce|wheat|semolina|"
+    r"tortillas?|pita|naan|buns?|rolls?|croutons?|crackers?|pastry|phyllo|filo|wrappers?|biscuits?|cake|gnocchi|orzo|lasagn\w*|penne|"
+    r"fettuccine|linguine|seitan|farro|spelt|malt|udon|ramen|baguette|brioche|sourdough|pizza dough|dumplings?|hoisin|teriyaki sauce)\b", re.I)
+
+
+def diet_labels(labels, ingredients):
+    """Keep only the labels the AI gave that the ingredient list can't disprove."""
+    text = _NOT_REALLY.sub(" ", " ; ".join(str(i) for i in ingredients))
+    out = [d for d in DIETS if d in {str(x).lower().strip() for x in (labels or []) if isinstance(x, str)}]
+    if _MEAT.search(text):
+        out = [d for d in out if d not in ("vegetarian", "vegan")]
+    if "vegan" in out and _ANIMAL.search(text):
+        out.remove("vegan")
+    if "vegan" in out and "vegetarian" not in out:
+        out.insert(0, "vegetarian")
+    if "dairy-free" in out and _DAIRY.search(text):
+        out.remove("dairy-free")
+    if "gluten-free" in out and _GLUTEN.search(text):
+        out.remove("gluten-free")
+    return out
+
+
 def _tags(body):
     """The client's own tags (they can rename and add), validated; the defaults if none came."""
     out = []
@@ -145,9 +184,24 @@ RECIPE_PROMPT = """You write one complete, reliable home-cooking recipe as JSON 
 - "ingredients": 6 to 16 strings. Start each with an amount and a US unit (cup, tbsp, tsp, oz, lb) or a plain count, then the ingredient, then any prep after a comma: "2 cloves garlic, minced", "1 lb chicken thighs, cubed", "1/2 cup soy sauce". Only salt, pepper, frying oil and garnish may say "to taste" or "as needed". The amounts must suit the stated servings.
 - "steps": 4 to 9 short imperative steps. Put times ("simmer for 10 minutes") and temperatures ("425°F") inside the step text. Meat and poultry must be cooked to safe temperatures.
 - "notes": one or two short tips (swaps, storage, make-ahead), max 220 characters.
+- "about": 2 or 3 sentences, max 380 characters: what the dish is, where it comes from, how it tastes. Plain words, no hype ("delicious", "perfect"), don't start with "This".
+- "level": "Easy", "Medium" or "Hard" for a home cook. "serve": what to serve it with, max 70 characters.
+- "kcal", "protein", "carbs", "fat": estimates per serving, integers (grams for the last three).
+- "diet": the labels strictly true of the recipe as written, from "vegetarian", "vegan", "gluten-free", "dairy-free", "spicy".
 - Respect every constraint in the request (diet, allergens, time, equipment).
 Tags to choose from (id: name): {tags}
-Return ONLY JSON: {{"title": str, "cuisine": str or "", "tag": one tag id, "minutes": int total time, "serves": int, "ingredients": [str], "steps": [str], "notes": str}}"""
+Return ONLY JSON: {{"title": str, "cuisine": str or "", "tag": one tag id, "minutes": int total time, "serves": int, "ingredients": [str], "steps": [str], "notes": str, "about": str, "level": str, "serve": str, "kcal": int, "protein": int, "carbs": int, "fat": int, "diet": [str]}}"""
+
+HELP_PROMPT = """You are the cooking helper inside a recipe app. The cook has the recipe below open and asks about it, sometimes about a part they highlighted. Answer like a patient chef standing beside them.
+- Answer in the first sentence, in plain words. Explain any technique or term (fold, deglaze, blind bake, soft peaks, a rolling boil…) and how to tell it is done right: what it should look, smell, sound or feel like.
+- Keep it short: 2 to 5 sentences, or a few "- " bullet points for a sequence. No preamble, don't repeat the question, no sign-off.
+- Use this recipe's own amounts, temperatures and step numbers. For a substitute, give one to three options with amounts and say what changes.
+- Give safe internal temperatures whenever meat, poultry, fish or eggs are involved.
+- If the question has nothing to do with cooking or this recipe, say in one sentence that you can only help with the recipe.
+- Plain text. **Bold** a few words at most. No headings, no tables, no emoji.
+
+THE RECIPE
+{recipe}"""
 
 
 @bp.get("/api/ai/status")
@@ -205,7 +259,7 @@ def recipe():
     serves = _int(body.get("serves"), 4, 1, 24) or 4
     user = f"Dish: {title}. Servings: {serves}. Context: {_s(body.get('blurb'), 160)}. The person asked: {_s(body.get('query'), 240)}"
     try:
-        data = _ask(RECIPE_PROMPT.format(tags=", ".join(f"{i}: {nm}" for i, nm in tags)), user, 2200)
+        data = _ask(RECIPE_PROMPT.format(tags=", ".join(f"{i}: {nm}" for i, nm in tags)), user, 2800)
     except AIError as exc:
         return jsonify(error=str(exc)), exc.status
     strip_no = re.compile(r"^\s*(?:step\s*)?\d+[.):]\s*", re.I)
@@ -217,8 +271,93 @@ def recipe():
         title=_s(data.get("title"), 70) or title, sub=_s(data.get("cuisine"), 24),
         tag=data.get("tag") if data.get("tag") in ids else ("mains" if "mains" in ids else tags[0][0]),
         min=_int(data.get("minutes"), 0, 0, 900) or None, serves=_int(data.get("serves"), serves, 1, 24) or serves,
-        ing=ings, steps=steps, notes=_s(data.get("notes"), 300),
+        ing=ings, steps=steps, notes=_s(data.get("notes"), 300), **details(data, ings),
     )
+
+
+def details(data, ings):
+    """The catalogue fields every recipe carries: description, level, serving idea, nutrition, diet labels."""
+    level = str(data.get("level") or "").strip().capitalize()
+    kcal = _int(data.get("kcal"), 0, 0, 3000)
+    nut = [kcal, _int(data.get("protein"), 0, 0, 300), _int(data.get("carbs"), 0, 0, 500), _int(data.get("fat"), 0, 0, 300)]
+    return {
+        "about": _s(data.get("about"), 420), "level": level if level in ("Easy", "Medium", "Hard") else "",
+        "serve": _s(data.get("serve"), 90), "diet": diet_labels(data.get("diet"), ings),
+        "nut": nut if 40 <= kcal <= 2500 else None, "kcal": kcal if 40 <= kcal <= 2500 else None,
+    }
+
+
+# ---------- "I don't understand this part": questions about the open recipe, answered as a stream ----------
+def _stream(messages, max_tokens=900):
+    key = os.environ.get("OPENAI_API_KEY")
+    body = {"model": MODEL, "max_completion_tokens": max_tokens, "messages": messages, "stream": True}
+    if re.match(r"^(gpt-5|o\d)", MODEL):
+        body["reasoning_effort"] = EFFORT
+    try:
+        resp = requests.post(OPENAI_URL, headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"},
+                             json=body, timeout=(6, 30), stream=True)
+    except requests.RequestException:
+        yield "I couldn't reach the AI service. Try again in a moment."
+        return
+    if not resp.ok:
+        log.error("OpenAI %s: %s", resp.status_code, resp.text[:400])
+        yield "The AI service returned an error. Try again in a moment."
+        return
+    said = False
+    try:
+        for raw in resp.iter_lines():                   # server-sent events: "data: {json}" per line
+            line = raw.decode("utf-8", "replace")
+            if not line.startswith("data:"):
+                continue
+            chunk = line[5:].strip()
+            if chunk == "[DONE]":
+                break
+            try:
+                piece = json.loads(chunk)["choices"][0]["delta"].get("content")
+            except (ValueError, KeyError, IndexError, TypeError):
+                continue
+            if piece:
+                said = True
+                yield piece
+    except requests.RequestException:
+        yield "\n\n(The answer was cut off. Ask again.)"
+    finally:
+        resp.close()
+    if not said:
+        yield "I couldn't come up with an answer to that. Try asking another way."
+
+
+@bp.post("/api/ai/ask")
+def ask():
+    body = request.get_json(silent=True) or {}
+    q = _s(body.get("q"), 500)
+    rec = body.get("recipe") if isinstance(body.get("recipe"), dict) else {}
+    title = _s(rec.get("title"), 120)
+    if len(q) < 2 or not title:
+        return jsonify(error="Ask a question about the recipe."), 400
+    if not _configured():
+        return jsonify(error="AI isn't switched on for this site yet.", code="off"), 503
+    if _limited("chat"):
+        return jsonify(error="That's a lot of questions. Give it a little while."), 429
+    ings = [_s(x, 200) for x in (rec.get("ing") or [])[:45] if isinstance(x, str)]
+    steps = [_s(x, 700) for x in (rec.get("steps") or [])[:30] if isinstance(x, str)]
+    minutes = _int(rec.get("min"), 0, 0, 2000)
+    text = "\n".join([
+        title, f"Serves {_int(rec.get('serves'), 4, 1, 99)}" + (f", about {minutes} minutes" if minutes else ""),
+        "Ingredients:", *(f"- {i}" for i in ings), "Method:", *(f"{n}. {s}" for n, s in enumerate(steps, 1)),
+    ])
+    notes = _s(rec.get("notes"), 500)
+    if notes:
+        text += f"\nThe cook's own notes: {notes}"
+    messages = [{"role": "system", "content": HELP_PROMPT.format(recipe=text)}]
+    for turn in (body.get("history") or [])[-8:]:
+        said = _s((turn or {}).get("text"), 1500) if isinstance(turn, dict) else ""
+        if said:
+            messages.append({"role": "assistant" if turn.get("role") == "ai" else "user", "content": said})
+    focus = _s(body.get("focus"), 700)
+    messages.append({"role": "user", "content": f'The part I mean: "{focus}"\n\n{q}' if focus else q})
+    return Response(_stream(messages), mimetype="text/plain; charset=utf-8",
+                    headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
 # ---------- photos: real ones, from free places ----------

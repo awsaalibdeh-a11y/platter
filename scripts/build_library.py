@@ -300,12 +300,37 @@ def main():
         pick = by_title.get(COVERS.get(tid, "").lower()) or sorted(pool, key=lambda r: (not r["video"], r["title"]))[0]
         tags.append({"id": tid, "name": name, "cover": pick["id"]})
 
+    # catalogue details from scripts/enrich.py: the few small fields the list and the filters need stay in the
+    # library; the longer text goes to details.json, which the app fetches after the first screen is drawn
+    info = {}
+    info_file = os.path.join(BASE, "scripts", "details.json")
+    if os.path.exists(info_file):
+        with open(info_file, encoding="utf-8") as fh:
+            info = json.load(fh)
+    details = {}
+    for r in recipes:
+        d = info.get(r["id"], {})
+        tip = r.pop("tip", "") or d.get("tip", "")
+        if d.get("level"):
+            r["level"] = d["level"]
+        if d.get("diet"):
+            r["diet"] = d["diet"]
+        if d.get("nut"):
+            r["kcal"] = d["nut"][0]
+        extra = {k: v for k, v in (("about", d.get("about")), ("serve", d.get("serve")), ("tip", tip), ("nut", d.get("nut"))) if v}
+        if extra:
+            details[r["id"]] = extra
+
     recipes.sort(key=lambda r: r["title"].lower())
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     with open(OUT, "w", encoding="utf-8") as fh:
         json.dump({"tags": tags, "recipes": recipes}, fh, ensure_ascii=False, separators=(",", ":"))
+    details_out = os.path.join(os.path.dirname(OUT), "details.json")
+    with open(details_out, "w", encoding="utf-8") as fh:
+        json.dump(details, fh, ensure_ascii=False, separators=(",", ":"))
 
     print(f"wrote {OUT}  ({os.path.getsize(OUT) / 1024:.0f} KB, {len(recipes)} recipes)")
+    print(f"wrote {details_out}  ({os.path.getsize(details_out) / 1024:.0f} KB, {len(details)} described)")
     for t in tags:
         pool = per_tag[t["id"]]
         subs = Counter(r["sub"] for r in pool if r["sub"])
