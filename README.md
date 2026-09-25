@@ -12,6 +12,9 @@ like an iPad app, in a browser.
 - Edit, duplicate, delete-with-undo, favourites, notes, print, share, backup and restore
 - **Ask AI**: say what you feel like making, get a few dishes with real photos, pick one and it writes the full recipe into your library
 - **Shopping list**: "Add to shopping list" under every recipe; amounts merge across recipes (2 cloves + 4 cloves = 6, 1 cup + 2 tbsp = 1⅛ cups), sorted by aisle, tick things off as you shop
+- **A door at the front**: on the first visit Platter asks for its creator's name. The right name (any capitalisation)
+  opens it for good; a wrong one gives 30 minutes with a timer in the corner, then Platter closes behind a lock
+  screen until the name is given (`static/js/gate.js`). It is stored in the visitor's browser, like everything else
 - **Recipe helper**: stuck on a step? Select any words in a recipe and tap "Ask AI about this", tap **Explain** on a step, or open the helper and ask. The recipe (at your servings, in your units) goes along as context, and the answer streams in
 - **Cook step by step**: one step at a time, full screen and big type, with the ingredients that step uses, its timers, read-aloud, swipe or arrow keys, and "I made this" at the end
 - **Every recipe described**: a short description, difficulty, calories and a protein/carbs/fat estimate per serving, a serving suggestion, a tip and diet labels (vegetarian, vegan, gluten-free, dairy-free, spicy). Filter any tag by diet, Easy or Under 30 minutes
@@ -99,6 +102,7 @@ static/js/shop.js      the shopping list: merging, aisles, its pane
 static/js/plan.js      the meal plan: days, servings, "add the week to the shopping list"
 static/js/pantry.js    "What can I make?": ranks recipes by what is in the kitchen
 static/js/ai.js        the Ask AI pane
+static/js/gate.js      the "name the creator" door and its 30-minute timer
 static/js/help.js      the recipe helper: select-to-ask, Explain, the streaming chat panel
 static/js/steps.js     cook step by step
 static/js/discover.js  the Discover front page

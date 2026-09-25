@@ -824,6 +824,33 @@ body.helper-open .dock { right: calc(min(25rem, 100vw - 2rem) + 2.2rem); }
   .cookrow .switch-wrap { margin-left: 0; }
 }
 
+/* ================= the door: name the creator ================= */
+html[data-gate="ask"] .app { filter: blur(14px) saturate(0.85); pointer-events: none; user-select: none; }
+html[data-gate="locked"] .app { visibility: hidden; }
+.gate { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 1.2rem; background: rgba(24, 26, 12, 0.42); animation: fade 0.2s ease-out; }
+html[data-gate="locked"] .gate { background: var(--bg-side); }
+.gate-card { display: grid; justify-items: center; gap: 0.85rem; width: min(26rem, 100%); padding: 2rem 1.8rem 1.6rem; border-radius: 1.5rem; background: #fff; box-shadow: var(--pop); text-align: center; animation: pop 0.22s var(--ease); }
+.gate-card h2 { font-size: 1.45rem; font-weight: 800; letter-spacing: -0.025em; line-height: 1.2; }
+.gate-card p { color: #5d5c57; font-size: 0.92rem; line-height: 1.5; }
+.gate-card .btn { margin-top: 0.2rem; }
+.gate-badge { display: grid; place-items: center; width: 3.4rem; height: 3.4rem; border-radius: 1rem; overflow: hidden; }
+.gate-badge svg { width: 100%; height: 100%; }
+.gate-badge.lock, .gate-badge.ok { border-radius: 50%; background: #fbe3dc; color: var(--danger); }
+.gate-badge.ok { background: var(--lime-soft); color: #33430a; }
+.gate-badge.lock svg, .gate-badge.ok svg { width: 1.6rem; height: 1.6rem; }
+.gate-form { display: flex; gap: 0.5rem; width: 100%; margin-top: 0.3rem; }
+.gate-form .input { flex: 1; min-width: 0; font-size: 1rem; }
+.gate-form .btn { margin-top: 0; }
+.gate-msg { min-height: 1.3em; color: var(--danger) !important; font-size: 0.85rem !important; font-weight: 600; }
+.gate-card.shake { animation: shake 0.42s ease-in-out; }
+@keyframes shake { 20%, 60% { transform: translateX(-9px); } 40%, 80% { transform: translateX(9px); } }
+.gate-chip { position: fixed; left: 1rem; bottom: calc(1rem + env(safe-area-inset-bottom)); z-index: 65; display: inline-flex; align-items: center; gap: 0.4rem; height: 2.2rem; padding: 0 0.95rem 0 0.75rem; border: 0; border-radius: 999px; background: #1f2114; color: #fff; font-size: 0.8rem; font-weight: 700; font-variant-numeric: tabular-nums; box-shadow: 0 8px 24px rgba(20, 22, 6, 0.3); cursor: pointer; }
+.gate-chip .ic { width: 1rem; height: 1rem; color: var(--lime); }
+.gate-chip em { font-style: normal; font-weight: 600; opacity: 0.7; }
+.gate-chip.low { background: var(--danger); }
+.gate-chip.low .ic { color: #fff; }
+@media (max-width: 720px) { .gate-chip { left: 0.8rem; bottom: calc(0.8rem + env(safe-area-inset-bottom)); } .gate-form { flex-direction: column; } }
+
 /* ================= responsive ================= */
 /* iPad portrait and small laptops: the tag panel becomes a drawer */
 @media (max-width: 1020px) {
@@ -887,7 +914,7 @@ body.helper-open .dock { right: calc(min(25rem, 100vw - 2rem) + 2.2rem); }
   body { height: auto; overflow: visible; background: #fff; }
   .app { display: block; height: auto; }
   .side, .list, .strip, .detail-top, .expand, .starbtn, .scaler button, .switch-wrap, .linkbtn, .dock, .toasts, #layer, .side-scrim, .shopbar, .shop-add, .shop-foot, .rx, .shop-item .rm, .credit,
-  .notes-wrap.empty, .chip.empty, .step-timers, .cookrow, .seg, .plan-add, .askbtn, .hero-btns, .steps-hint, .step-tools, .similar, .helper, .askpill { display: none !important; }
+  .notes-wrap.empty, .chip.empty, .step-timers, .cookrow, .seg, .plan-add, .askbtn, .hero-btns, .steps-hint, .step-tools, .similar, .helper, .askpill, .gate-chip { display: none !important; }
   .hero::after { display: none; }
   .detail { display: block; box-shadow: none; }
   .detail-scroll { overflow: visible; padding: 0; }

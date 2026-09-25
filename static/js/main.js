@@ -5,6 +5,7 @@
 
   addEventListener("keydown", (e) => {
     if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (P.gate?.blocking()) return;                     // the "name the creator" door is up
     if (typing(e.target)) { if (e.key === "Escape") e.target.blur(); return; }
     if (P.overlayOpen()) return;
     const inList = !!e.target.closest?.("#rows");

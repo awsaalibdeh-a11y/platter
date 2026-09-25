@@ -282,6 +282,17 @@
 :root[data-theme="dark"] .dplan { background: var(--lime-soft); }
 :root[data-theme="dark"] .dplan .drow-head h2 { color: #c7e28d; }
 :root[data-theme="dark"] .dplan-item { background: #242424; }
+:root[data-theme="dark"] .gate { background: rgba(24, 26, 12, 0.42); }
+:root[data-theme="dark"][data-gate="locked"] .gate { background: var(--bg-side); }
+:root[data-theme="dark"] .gate-card { background: #242424; box-shadow: var(--pop); }
+:root[data-theme="dark"] .gate-card p { color: #a4a39e; }
+:root[data-theme="dark"] .gate-badge.lock, :root[data-theme="dark"] .gate-badge.ok { background: #3e251d; color: var(--danger); }
+:root[data-theme="dark"] .gate-badge.ok { background: var(--lime-soft); color: #cae28d; }
+:root[data-theme="dark"] .gate-msg { color: var(--danger) !important; }
+:root[data-theme="dark"] .gate-chip { background: #e9eae5; color: #141414; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.54); }
+:root[data-theme="dark"] .gate-chip .ic { color: var(--lime); }
+:root[data-theme="dark"] .gate-chip.low { background: var(--danger); }
+:root[data-theme="dark"] .gate-chip.low .ic { color: #141414; }
 @media (max-width: 1020px) {
   :root[data-theme="dark"] .side { box-shadow: 18px 0 50px rgba(0, 0, 0, 0.45); }
   :root[data-theme="dark"] .side-scrim { background: rgba(24, 26, 12, 0.28); }

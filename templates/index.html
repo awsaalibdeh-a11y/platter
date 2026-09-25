@@ -28,6 +28,11 @@
       var dark = t === "dark" || (t === "auto" && matchMedia("(prefers-color-scheme: dark)").matches);
       document.documentElement.dataset.theme = dark ? "dark" : "light";
     } catch (e) { /* storage blocked: light */ }
+    // the door (static/js/gate.js): decided before the first paint, so a locked visitor never glimpses the recipes
+    try {
+      var g = JSON.parse(localStorage.getItem("platter.gate") || "{}") || {};
+      document.documentElement.dataset.gate = g.ok ? "ok" : !g.wrongAt ? "ask" : Date.now() - g.wrongAt >= 1800000 ? "locked" : "trial";
+    } catch (e) { document.documentElement.dataset.gate = "ask"; }
   </script>
 </head>
 <body>
@@ -104,6 +109,7 @@
   <script defer src="{{ url_for('static', filename='js/util.js') }}?v={{ v }}"></script>
   <script defer src="{{ url_for('static', filename='js/store.js') }}?v={{ v }}"></script>
   <script defer src="{{ url_for('static', filename='js/ui.js') }}?v={{ v }}"></script>
+  <script defer src="{{ url_for('static', filename='js/gate.js') }}?v={{ v }}"></script>
   <script defer src="{{ url_for('static', filename='js/cook.js') }}?v={{ v }}"></script>
   <script defer src="{{ url_for('static', filename='js/shop.js') }}?v={{ v }}"></script>
   <script defer src="{{ url_for('static', filename='js/plan.js') }}?v={{ v }}"></script>
