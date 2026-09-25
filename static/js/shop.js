@@ -9,6 +9,8 @@
   const { h } = P;
   const hi = (name) => h("span", { class: "ic-wrap", html: P.icon(name) });
   const S = () => P.S.shop;
+  // what nearly every kitchen already has: not worth a line on the list
+  const BASICS = /^(?:(?:fine|coarse|ground|freshly ground|cracked|black|white|kosher|sea|table|flaky|cold|hot|warm|boiling)\s+)*(?:salt|pepper|peppercorns?|salt and pepper|water|ice|ice cubes|(?:vegetable|olive|extra virgin olive|cooking|sunflower|canola|neutral|frying|rapeseed)\s+oil|oil)$/;
 
   /* ---------- reading a line ---------- */
   const SIZE_WORDS = /^(?:(?:large|medium|small|big|fresh|ripe|whole|boneless|skinless|raw|cooked|dried|frozen|canned|tinned|organic|extra)\s+)+/i;
@@ -137,8 +139,12 @@
     nameOf: (line) => read(line).name,
     aisleOfName: (name) => aisleOf(name),
 
+    /** Kitchen basics (salt, pepper, oil, water) left off the list, when that's on. */
+    basicsHidden() { return S().basics === false ? 0 : [...collect().values()].filter((e) => !S().hidden[e.key] && BASICS.test(e.name)).length; },
+    toggleBasics() { S().basics = S().basics === false; touch(); },
     sections() {
-      const items = [...collect().values()].filter((e) => !S().hidden[e.key]).map((e) => ({
+      const skipBasics = S().basics !== false;
+      const items = [...collect().values()].filter((e) => !S().hidden[e.key] && !(skipBasics && BASICS.test(e.name))).map((e) => ({
         key: e.key, name: e.name, text: textOf(e), aisle: aisleOf(e.name), done: !!S().done[e.key], from: [...e.from], cost: e.cost ?? null,
       }));
       const by = {};
@@ -247,6 +253,12 @@
         done ? h("span", { class: "chip" }, hi("check"), `${done} in the basket`) : null,
         recipes.length ? h("span", { class: "chip" }, hi("book"), P.plural(recipes.length, "recipe")) : null),
       h("div", { class: "shop-add" }, input, h("button", { class: "btn lime", type: "button", onClick: add }, hi("plus"), "Add")),
+      (() => {
+        const n = P.shop.basicsHidden(), off = P.S.shop.basics === false;
+        if (!n && !off) return null;
+        return h("p", { class: "shop-basics" }, hi("jar"), off ? "Showing salt, pepper, oil and water. " : `${P.plural(n, "kitchen basic")} (salt, pepper, oil, water) left off. `,
+          h("button", { class: "textbtn", type: "button", onClick: () => P.shop.toggleBasics() }, off ? "Leave them off" : "Show them"));
+      })(),
       recipes.length ? h("div", { class: "shop-from" }, h("span", { class: "label" }, "From"),
         recipes.map((r) => h("span", { class: "rchip" },
           h("button", { class: "rname", type: "button", onClick: () => openRecipe(r), title: "Open the recipe" }, r.title, h("em", {}, ` · ${r.servings}`)),

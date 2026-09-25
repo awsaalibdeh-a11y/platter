@@ -17,7 +17,7 @@
     fav: {}, user: {}, edits: {}, gone: {}, checks: {}, scale: {}, notes: {}, steps: {},
     rate: {}, made: {}, plan: {}, pantry: { have: [], staples: true }, books: [], diet: { keys: [], on: true }, prices: { on: true, cc: "", name: "", city: "", cal: null },
     tags: { order: [], names: {}, covers: {}, hidden: {}, custom: [] },
-    shop: { recipes: [], extra: [], done: {}, hidden: {} },
+    shop: { recipes: [], extra: [], done: {}, hidden: {}, basics: true },
     recent: [],
     ui: { sidebar: true, sort: "az", last: null, units: "orig", theme: "auto", speak: false },
   });
@@ -438,7 +438,7 @@
   };
 
   /* ---------- router: #/  ·  #/t/<tag>  ·  #/t/<tag>/r/<id>[/edit]  ·  #/new[/<tag>]  ·  #/ai  #/shop  #/plan  #/pantry ---------- */
-  P.PANES = ["discover", "ai", "shop", "plan", "pantry", "stats", "shared", "settings"];        // whole-pane tools that borrow the list column for context
+  P.PANES = ["discover", "ai", "shop", "plan", "pantry", "stats", "shared", "sharedbook", "settings"];        // whole-pane tools that borrow the list column for context
   P.route = { tag: "chicken", id: null, mode: "view", home: true };
   P.parseRoute = () => {
     const parts = location.hash.replace(/^#\/?/, "").split("/").map(decodeURIComponent).filter(Boolean);
@@ -454,7 +454,7 @@
   };
   P.pathFor = ({ tag, id, mode, data }) => {
     if (mode === "new") return tag ? `new/${tag}` : "new";
-    if (mode === "shared") return `shared/${data || ""}`;
+    if (mode === "shared" || mode === "sharedbook") return `${mode}/${data || ""}`;
     if (P.PANES.includes(mode)) return mode;
     if (!tag) return "";
     return `t/${tag}${id ? `/r/${encodeURIComponent(id)}${mode === "edit" ? "/edit" : ""}` : ""}`;

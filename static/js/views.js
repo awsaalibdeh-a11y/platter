@@ -261,6 +261,7 @@
     P.popover(anchor, (close) => [
       bookId ? [
         h("div", { class: "pop-h" }, "Cookbook"),
+        P.menuItem({ label: "Share this cookbook", sub: "A link anyone can open and save", icon: "share", onClick: () => { close(); P.shareBook(bookId); } }),
         P.menuItem({ label: "Rename cookbook", icon: "pencil", onClick: () => { close(); P.cookbooks.rename(bookId); } }),
         P.menuItem({ label: "Delete cookbook", icon: "trash", danger: true, onClick: () => { close(); P.cookbooks.remove(bookId); } }),
         h("div", { class: "pop-sep" }),
@@ -1210,7 +1211,7 @@
     syncQuick();
     const r = id && P.recipe(id);
     P.help.sync(mode === "view" ? r || null : null);
-    document.title = `${{ new: "New recipe", ai: "Ask AI", shop: "Shopping list", plan: "Meal plan", pantry: "What can I make?", discover: "Discover", stats: "Your kitchen", shared: "Shared recipe", settings: "Settings" }[mode] || (r ? r.title : P.tagName(tag))} · Platter`;
+    document.title = `${{ new: "New recipe", ai: "Ask AI", shop: "Shopping list", plan: "Meal plan", pantry: "What can I make?", discover: "Discover", stats: "Your kitchen", shared: "Shared recipe", sharedbook: "Shared cookbook", settings: "Settings" }[mode] || (r ? r.title : P.tagName(tag))} · Platter`;
   }
 
   /** The phone tab bar: which place you are in. */

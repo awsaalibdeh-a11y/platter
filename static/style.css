@@ -826,6 +826,13 @@ body.helper-open .dock { right: calc(min(25rem, 100vw - 2rem) + 2.2rem); }
   .cookrow .switch-wrap { margin-left: 0; }
 }
 
+/* ================= planning and sharing ================= */
+.drow-head > div { display: grid; gap: 0.05rem; }
+.drow-head small { color: var(--muted); font-size: 0.75rem; font-weight: 500; }
+.shop-basics { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; margin-top: 0.8rem; color: var(--muted); font-size: 0.8rem; }
+.shop-basics .ic { width: 0.95rem; height: 0.95rem; color: #7ea11a; }
+.book-share { display: grid; gap: 0.6rem; margin-top: 1rem; }
+
 /* ================= phones: the tab bar; wide screens: a soft hand-over between pages ================= */
 .tabbar { display: none; }
 @media (max-width: 720px) {

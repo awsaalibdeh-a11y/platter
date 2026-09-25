@@ -13,13 +13,18 @@
   const fromB64 = (s) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(/_/g, "/")), (c) => c.charCodeAt(0));
   const through = async (bytes, stream) => new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(stream)).arrayBuffer());
 
-  async function encode(r) {
+  /** Just the fields a recipe needs to travel; an uploaded photo is too big for a link. */
+  function trim(r) {
     const o = {};
     for (const k of FIELDS) { const v = r[k]; if (v != null && v !== "" && !(Array.isArray(v) && !v.length)) o[k] = v; }
-    if (String(o.img || "").startsWith("data:")) { delete o.img; delete o.cr; delete o.crl; }     // an uploaded photo is too big for a link
+    if (String(o.img || "").startsWith("data:")) { delete o.img; delete o.cr; delete o.crl; }
+    return o;
+  }
+  async function pack(o) {
     const json = new TextEncoder().encode(JSON.stringify(o));
     return "CompressionStream" in window ? `z${toB64(await through(json, new CompressionStream("deflate-raw")))}` : `j${toB64(json)}`;
   }
+  const encode = (r) => pack(trim(r));
   async function decode(s) {
     const bytes = fromB64(s.slice(1));
     const json = s[0] === "z" ? await through(bytes, new DecompressionStream("deflate-raw")) : bytes;
@@ -47,6 +52,60 @@
   P.shareLink = async (r) => {
     if (!r.user && !r.edited) return `${location.origin}/#/t/${r.tag}/r/${encodeURIComponent(r.id)}`;
     return `${location.origin}/#/shared/${await encode(r)}`;
+  };
+
+  /* ---------- a whole cookbook as a link: sample recipes by id, your own ones carried inside ---------- */
+  P.shareBook = async (bookId) => {
+    const recipes = P.inTag(bookId);
+    const payload = { n: P.tagName(bookId), ids: recipes.filter((r) => !r.user && !r.edited).map((r) => r.id), rs: recipes.filter((r) => r.user || r.edited).map(trim) };
+    const url = `${location.origin}/#/sharedbook/${await pack(payload)}`;
+    if (navigator.share) {
+      try { await navigator.share({ title: payload.n, url }); return; } catch (e) { if (e.name === "AbortError") return; }
+    }
+    await P.copyText(url);
+    P.toast(`Link to “${payload.n}” copied. Anyone who opens it can save the cookbook.`, { ms: 4500 });
+  };
+
+  P.panes.sharedbook = async (top, scroll, ctx) => {
+    top.replaceChildren(h("span", { class: "tagpill ghost" }, "Shared cookbook"),
+      h("div", { class: "acts" }, h("button", { class: "btn ghost sm", type: "button", onClick: ctx.close }, "Close")));
+    scroll.replaceChildren(h("div", { class: "blank" }, h("span", { class: "spin big" }), h("p", {}, "Opening the cookbook…")));
+    const data = P.route.data;
+    let book;
+    try {
+      const o = await decode(data);
+      const mine = (Array.isArray(o.rs) ? o.rs.slice(0, 60) : []).map((x) => { try { return clean(x); } catch { return null; } }).filter(Boolean);
+      const seed = (Array.isArray(o.ids) ? o.ids.slice(0, 300) : []).map((id) => P.recipe(String(id))).filter(Boolean);
+      book = { name: String(o.n || "A cookbook").slice(0, 40), seed, mine };
+      if (!seed.length && !mine.length) throw new Error("empty");
+    } catch {
+      if (P.route.mode === "sharedbook") scroll.replaceChildren(h("div", { class: "blank" }, hi("book"), h("p", {}, "This link is damaged or cut short. Ask for it again.")));
+      return;
+    }
+    if (P.route.mode !== "sharedbook" || P.route.data !== data) return;
+    let saved = null;                        // a second tap goes to the cookbook, not a second copy of it
+    const save = () => {
+      if (saved) return P.go(P.pathFor({ tag: saved }));
+      const id = saved = P.addBook(book.name);
+      for (const r of book.seed) P.toggleInBook(id, r.id);
+      for (const r of book.mine) {
+        const tag = P.validTag(r.tag) && !P.isSpecial(r.tag) ? r.tag : P.guessTag(r.title, "", r.ing);
+        P.toggleInBook(id, P.saveRecipe({ ...r, tag, dom: r.dom || "Shared recipe" }));
+      }
+      P.toast(`Saved “${book.name}” to your cookbooks.`);
+      P.go(P.pathFor({ tag: id }));
+    };
+    const rowOf = (r) => h("div", { class: "dplan-item" },
+      h("span", { class: "pi-thumb" }, r.img ? h("img", { src: P.photo(r.img, "small"), alt: "", referrerpolicy: "no-referrer" }) : null),
+      h("span", { class: "pi-title" }, r.title));
+    const all = [...book.seed, ...book.mine];
+    scroll.replaceChildren(h("div", { class: "recipe shared" },
+      h("div", { class: "shared-bar" }, hi("book"), h("span", {}, "Someone shared a cookbook with you."),
+        h("button", { class: "btn lime sm", type: "button", onClick: save }, hi("plus"), "Save this cookbook")),
+      h("h1", { class: "title" }, book.name),
+      h("p", { class: "lead" }, `${P.plural(all.length, "recipe")}${book.mine.length ? `, ${book.mine.length} of them the sender's own` : ""}.`),
+      h("div", { class: "book-share" }, all.map(rowOf)),
+      h("div", { class: "shop-foot" }, h("button", { class: "btn lime", type: "button", onClick: save }, hi("plus"), "Save this cookbook"))));
   };
 
   /* ---------- the page a shared link opens ---------- */

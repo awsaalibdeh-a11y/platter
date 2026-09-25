@@ -57,6 +57,17 @@
       const today = key(new Date());
       return Object.keys(days()).filter((k) => k >= today).reduce((n, k) => n + P.plan.on(k).length, 0);
     },
+    /** Move a planned meal to another day. */
+    move(k, u, to) {
+      const list = days()[k] || [];
+      const i = list.findIndex((e) => e.u === u);
+      if (i < 0 || to === k) return () => {};
+      const [e] = list.splice(i, 1);
+      if (!list.length) delete days()[k];
+      (days()[to] ||= []).push(e);
+      touch();
+      return () => P.plan.move(to, u, k);
+    },
     clearWeek(from) {
       const keys = Array.from({ length: 7 }, (_, i) => key(addDays(from, i)));
       const snap = keys.map((k) => [k, days()[k]]);
@@ -188,6 +199,40 @@
   }
   P.plan.pick = pickDinners;
 
+  /** "Move to…": the days of this week and the next. */
+  function moveMenu(anchor, k, e, from) {
+    const r = P.recipe(e.id);
+    P.popover(anchor, (close) => [
+      h("div", { class: "pop-h" }, `Move ${r.title} to…`),
+      ...Array.from({ length: 14 }, (_, i) => addDays(from, i)).filter((d) => key(d) !== k && key(d) >= key(new Date())).map((d) => P.menuItem({
+        label: long(d), icon: "calendar", count: P.plan.on(key(d)).length || undefined,
+        onClick: () => { close(); const undo = P.plan.move(k, e.u, key(d)); P.toast(`Moved to ${long(d)}.`, { action: { label: "Undo", fn: undo } }); },
+      })),
+    ], { class: "scroll", align: "right" });
+  }
+
+  /* ---------- the week, as calendar events (.ics): each planned meal on its day, with its ingredients ---------- */
+  const icsText = (s) => String(s).replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+  const fold = (line) => { const out = []; while (line.length > 74) { out.push(line.slice(0, 74)); line = ` ${line.slice(74)}`; } out.push(line); return out.join("\r\n"); };
+  function calendar(dates) {
+    const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
+    const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Platter//Meal plan//EN", "CALSCALE:GREGORIAN", "X-WR-CALNAME:Platter meal plan"];
+    let n = 0;
+    for (const d of dates) {
+      for (const e of P.plan.on(key(d))) {
+        const r = P.recipe(e.id), day = key(d).replace(/-/g, ""), next = key(addDays(d, 1)).replace(/-/g, "");
+        const about = `Serves ${e.servings}. ${location.origin}/#/t/${r.tag}/r/${encodeURIComponent(r.id)}\n\nIngredients:\n${r.ing.map((l) => `- ${l}`).join("\n")}`;
+        lines.push("BEGIN:VEVENT", `UID:${e.u}-${day}@platter`, `DTSTAMP:${stamp}`, `DTSTART;VALUE=DATE:${day}`, `DTEND;VALUE=DATE:${next}`,
+          `SUMMARY:${icsText(`Cook: ${r.title}`)}`, `DESCRIPTION:${icsText(about)}`, "END:VEVENT");
+        n++;
+      }
+    }
+    lines.push("END:VCALENDAR");
+    P.download(`platter-meal-plan-${key(dates[0])}.ics`, lines.map(fold).join("\r\n"), "text/calendar");
+    P.toast(`${P.plural(n, "meal")} saved as a calendar file. Open it to add them to your calendar.`, { ms: 5000 });
+  }
+  P.plan.calendar = calendar;
+
   /* ---------- the pane ---------- */
   let week = monday(new Date());                                   // which week the pane is showing
 
@@ -211,6 +256,7 @@
           h("span", { class: "pi-thumb" }, r.img ? h("img", { src: P.photo(r.img, "small"), alt: "", loading: "lazy", draggable: "false" }) : null),
           h("span", { class: "pi-title" }, r.title)),
         h("span", { class: "pi-serves" }, step(-1), h("span", {}, `Serves ${e.servings}`), step(1)),
+        h("button", { class: "pi-x", type: "button", "aria-label": `Move ${r.title} to another day`, title: "Move to another day", html: P.icon("calendar"), onClick: (ev) => moveMenu(ev.currentTarget, k, e, week) }),
         h("button", { class: "pi-x", type: "button", "aria-label": `Remove ${r.title}`, html: P.icon("x"), onClick: () => { const undo = P.plan.remove(k, e.u); P.toast(`Removed ${r.title}.`, { action: { label: "Undo", fn: undo } }); } }));
     };
 
@@ -258,6 +304,7 @@
       h("div", { class: "plan-days" }, dates.map(dayEl)),
       h("div", { class: "plan-foot" },
         h("button", { class: "btn lime", type: "button", disabled: !planned.length, onClick: addWeek }, hi("cart"), "Add this week to my shopping list"),
+        planned.length ? h("button", { class: "btn ghost sm", type: "button", onClick: () => calendar(dates), title: "Download the week as a calendar file (.ics)" }, hi("calendar"), "Add to my calendar") : null,
         planned.length ? h("button", { class: "btn danger-ghost sm", type: "button", onClick: () => { const undo = P.plan.clearWeek(week); P.toast("Cleared the week.", { action: { label: "Undo", fn: undo } }); } }, hi("trash"), "Clear the week") : null,
         h("span", { class: "shopnote" }, planned.length ? "Ingredients you ticked on a recipe are left out." : "Plan a few dinners, then shop for all of them in one tap."))));
     // the week starts on Monday, so on a Friday the first thing on screen would be four empty past days

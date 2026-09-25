@@ -51,7 +51,10 @@
     P.closeOverlay();
     const scrim = h("div", { class: "scrim clear" });
     const pop = h("div", { class: "popover" + (opts.class ? ` ${opts.class}` : ""), role: opts.role || "menu" });
-    const close = track({ all: [scrim, pop], pop }, () => anchor?.setAttribute("aria-expanded", "false"));
+    // a menu belongs to the page it was opened on: going back or forward closes it
+    const onRoute = () => close();
+    const close = track({ all: [scrim, pop], pop }, () => { anchor?.setAttribute("aria-expanded", "false"); removeEventListener("hashchange", onRoute); });
+    addEventListener("hashchange", onRoute);
     scrim.addEventListener("click", close);
     pop.append(...[build(close)].flat(Infinity).filter(Boolean));
     pop.style.visibility = "hidden";

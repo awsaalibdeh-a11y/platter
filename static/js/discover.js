@@ -27,12 +27,12 @@
     h("span", { class: "dcard-m" }, meta(r) || P.tagName(r.tag)));
 
   /** A titled row of cards that scrolls sideways. */
-  function row(title, list, more) {
+  function row(title, list, more, sub) {
     if (!list.length) return null;
     const track = h("div", { class: "drow-track" }, list.map(card));
     const nudge = (d) => track.scrollBy({ left: d * track.clientWidth * 0.85, behavior: "smooth" });
     return h("section", { class: "drow" },
-      h("div", { class: "drow-head" }, h("h2", {}, title),
+      h("div", { class: "drow-head" }, h("div", {}, h("h2", {}, title), sub ? h("small", {}, sub) : null),
         more ? h("button", { class: "textbtn", type: "button", onClick: more }, "See all") : null,
         h("span", { class: "drow-arrows" },
           h("button", { class: "ibtn sm", type: "button", "aria-label": "Scroll left", html: P.icon("chevron"), onClick: () => nudge(-1) }),
@@ -57,6 +57,36 @@
           h("button", { class: "btn lime", type: "button", onClick: () => open(r) }, "View recipe", hi("chevronRight")),
           h("button", { class: "btn ghost", type: "button", onClick: () => P.stepper.open(r) }, hi("chefHat"), "Cook it now"),
           h("button", { class: "btn ghost", type: "button", onClick: (e) => P.plan.menu(e.currentTarget, r) }, hi("calendar"), "Plan it"))));
+  }
+
+  /** "Picked for you": what your favorites, ratings, cooking and browsing say you like (tags, cuisines, ingredients). */
+  function pickedForYou(all) {
+    const S = P.S, tagW = new Map(), subW = new Map(), ingW = new Map();
+    const add = (id, weight) => {
+      const r = P.recipe(id);
+      if (!r || !weight) return;
+      tagW.set(r.tag, (tagW.get(r.tag) || 0) + weight);
+      if (r.sub) subW.set(r.sub, (subW.get(r.sub) || 0) + weight);
+      for (const n of P.ingredientNames(r)) ingW.set(n, (ingW.get(n) || 0) + weight * 0.25);
+    };
+    Object.keys(S.fav).forEach((id) => add(id, 3));
+    Object.entries(S.rate).forEach(([id, n]) => add(id, n >= 4 ? 3 : n <= 2 ? -2 : 0));
+    Object.keys(S.made).forEach((id) => add(id, 2));
+    S.recent.slice(0, 15).forEach((id) => add(id, 1));
+    const signals = Object.keys(S.fav).length + Object.keys(S.made).length + Object.keys(S.rate).length + Math.min(S.recent.length, 15) / 3;
+    if (signals < 2) return null;
+    const known = new Set([...Object.keys(S.fav), ...Object.keys(S.made), ...S.recent.slice(0, 10)]);
+    const scored = [];
+    for (const r of all) {
+      if (known.has(r.id)) continue;
+      let s = (tagW.get(r.tag) || 0) + (r.sub ? (subW.get(r.sub) || 0) * 1.2 : 0);
+      for (const n of P.ingredientNames(r)) s += ingW.get(n) || 0;
+      if (s > 0) scored.push([s, r]);
+    }
+    const best = scored.sort((a, b) => b[0] - a[0]).slice(0, 40).map(([, r]) => r);
+    const top = (m) => [...m].filter(([, v]) => v > 0).sort((a, b) => b[1] - a[1])[0]?.[0];
+    const why = [top(subW), top(tagW) && P.tagName(top(tagW)).toLowerCase()].filter(Boolean);
+    return { list: daily(best, "picked", 14), why: why.length ? `Because you like ${why.join(" and ")}` : "" };
   }
 
   /** The first time: four things worth trying, then out of the way for good. */
@@ -124,6 +154,7 @@
           h("button", { class: "pi-main", type: "button", onClick: () => open(r) },
             h("span", { class: "pi-thumb" }, r.img ? h("img", { src: P.photo(r.img, "small"), alt: "" }) : null), h("span", { class: "pi-title" }, r.title)),
           h("button", { class: "btn lime sm", type: "button", onClick: () => P.stepper.open(r) }, hi("chefHat"), "Start cooking"))))) : null,
+      (() => { const p = pickedForYou(all); return p ? row("Picked for you", p.list, null, p.why) : null; })(),
       row("Quick weeknight dinners", quick, () => P.views.browse({ quick: true })),
       again.length ? row("Cook it again", again, () => P.go(P.pathFor({ tag: "made" }))) : null,
       favs.length ? row("Your favorites", favs, () => P.go(P.pathFor({ tag: "fav" }))) : null,
