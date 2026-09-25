@@ -18,6 +18,8 @@
       case "f": P.views.fav(); break;
       case "c": P.views.toggleCook(); break;
       case "n": P.views.add(); break;
+      case "a": P.views.openAI(); break;
+      case "s": P.views.openShop(); break;
       case "[": P.views.toggleSidebar(); break;
       default:
     }

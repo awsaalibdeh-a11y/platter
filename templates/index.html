@@ -6,6 +6,7 @@
   <title>Platter — your recipe box</title>
   <meta name="description" content="A recipe box with tags, a servings scaler, Cook Mode with timers, and one-tap import from any recipe link.">
   <meta name="theme-color" content="#fafaf8">
+  <meta name="referrer" content="no-referrer">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Platter">
@@ -57,10 +58,13 @@
         </div>
         <button class="ibtn sortbtn" id="sort-btn" type="button" aria-haspopup="menu" aria-label="Sort and filter" title="Sort and filter" data-icon="arrowUp"></button>
       </header>
-      <div class="search">
-        <span class="search-ic" data-icon="search"></span>
-        <input id="search" type="text" inputmode="search" placeholder="Search this tag" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Search this tag" enterkeyhint="search">
-        <button class="search-clear" id="search-clear" type="button" hidden aria-label="Clear search" data-icon="x"></button>
+      <div class="search-row">
+        <div class="search">
+          <span class="search-ic" data-icon="search"></span>
+          <input id="search" type="text" inputmode="search" placeholder="Search this tag" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Search this tag" enterkeyhint="search">
+          <button class="search-clear" id="search-clear" type="button" hidden aria-label="Clear search" data-icon="x"></button>
+        </div>
+        <button class="aibtn" id="btn-ai" type="button" aria-label="Ask AI what to cook" title="Ask AI what to cook  ( A )"><span data-icon="sparkle"></span>AI</button>
       </div>
       <div class="filter-row" id="filter-row" hidden></div>
       <div class="rows" id="rows" role="listbox" aria-label="Recipes"></div>
@@ -86,6 +90,8 @@
   <script defer src="{{ url_for('static', filename='js/store.js') }}?v={{ v }}"></script>
   <script defer src="{{ url_for('static', filename='js/ui.js') }}?v={{ v }}"></script>
   <script defer src="{{ url_for('static', filename='js/cook.js') }}?v={{ v }}"></script>
+  <script defer src="{{ url_for('static', filename='js/shop.js') }}?v={{ v }}"></script>
+  <script defer src="{{ url_for('static', filename='js/ai.js') }}?v={{ v }}"></script>
   <script defer src="{{ url_for('static', filename='js/views.js') }}?v={{ v }}"></script>
   <script defer src="{{ url_for('static', filename='js/main.js') }}?v={{ v }}"></script>
 </body>

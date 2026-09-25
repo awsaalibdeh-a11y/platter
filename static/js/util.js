@@ -67,6 +67,9 @@
     book: '<path d="M5 4.6h9.6a3.4 3.4 0 0 1 3.4 3.4v12H8.4A3.4 3.4 0 0 1 5 16.6V4.6z"/><path d="M5 16.6A3.4 3.4 0 0 1 8.4 13.2H18"/>',
     clockArrow: '<path d="M4.6 12a7.4 7.4 0 1 0 2.2-5.2L4.4 9.2"/><path d="M4.4 4.8v4.4h4.4M12 8v4.2l2.8 1.7"/>',
     plate: '<circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="4.6"/>',
+    sparkle: '<path d="M11 3.6l1.9 5.1 5.1 1.9-5.1 1.9L11 17.6l-1.9-5.1L4 10.6l5.1-1.9L11 3.6z"/><path d="M18.4 14.6l.8 2.2 2.2.8-2.2.8-.8 2.2-.8-2.2-2.2-.8 2.2-.8.8-2.2z"/>',
+    cart: '<circle cx="9.5" cy="19.6" r="1.4"/><circle cx="17.5" cy="19.6" r="1.4"/><path d="M2.8 4h2.6l2.2 10.9a1.7 1.7 0 0 0 1.7 1.4h7.6a1.7 1.7 0 0 0 1.7-1.3L20.6 8H6.2"/>',
+    basket: '<path d="M4 9.5h16l-1.6 9a1.8 1.8 0 0 1-1.8 1.5H7.4a1.8 1.8 0 0 1-1.8-1.5L4 9.5z"/><path d="M8 9.5l3-5.5M16 9.5l-3-5.5"/>',
   };
   P.icon = (name, cls = "") =>
     `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ""}</svg>`;
@@ -159,6 +162,12 @@
     if (tight && !(unit && TIGHT_OK.has(unit.one))) return null;     // "2x", "3rd": not a quantity
     return { q, q2, unit, tight, rest };
   };
+
+  // the shopping list needs the same reading of a line the scaler uses
+  P.parseLine = parse;
+  P.fmtQty = fmt;
+  P.units = UNIT;
+  P.panes = {};                                   // the modules that draw a whole pane register here
 
   /** Scale a printed ingredient line by `factor`; lines without a leading quantity pass through. */
   P.scaleLine = (line, factor = 1) => {

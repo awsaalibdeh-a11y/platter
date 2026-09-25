@@ -34,6 +34,7 @@
     els.clear.addEventListener("click", () => { clearSearch(); els.search.focus(); });
     els.sortBtn.addEventListener("click", () => sortMenu(els.sortBtn));
     $("#btn-add").addEventListener("click", newRecipe);
+    $("#btn-ai").addEventListener("click", () => openAI());
     $("#btn-tags").addEventListener("click", toggleTileEditing);
     $("#btn-folder").addEventListener("click", (e) => collectionsMenu(e.currentTarget));
     $("#btn-people").addEventListener("click", (e) => shareMenu(e.currentTarget));
@@ -41,22 +42,23 @@
     $("#btn-sidebar-show").addEventListener("click", toggleSidebar);
     els.sideScrim.addEventListener("click", () => { state.drawer = false; syncSide(); });
     els.backTags.addEventListener("click", () => P.go(""));
-    els.backList.addEventListener("click", () => P.go(P.pathFor({ tag: P.route.tag })));
+    els.backList.addEventListener("click", () => (P.route.mode === "view" ? P.go(P.pathFor({ tag: P.route.tag })) : closePane()));
 
     P.on("route", onRoute);
     P.on("data", onData);
     P.on("layout", onLayout);
     P.on("fav", onFav);
+    P.on("shop", onShop);
     P.on("scale", (id) => id === P.route.id && refreshScale());
     // a photo that fails to load falls back to the soft placeholder instead of a broken icon
     document.addEventListener("error", (e) => {
       const img = e.target;
-      if (img.tagName === "IMG" && img.closest(".tile, .row-thumb, .hero, .cover-opt")) img.classList.add("broken");
+      if (img.tagName === "IMG" && img.closest(".tile, .row-thumb, .hero, .cover-opt, .idea-photo")) img.classList.add("broken");
     }, true);
     syncSide();
   }
 
-  function start() { renderTiles(); onRoute(); }
+  function start() { renderTiles(); updateShopBadge(); onRoute(); }
 
   function fail() {
     els.tiles.replaceChildren(h("div", { class: "load-fail" },
@@ -178,7 +180,11 @@
       const go = (tag) => () => { close(); if (P.isMedium()) { state.drawer = false; syncSide(); } P.go(P.pathFor({ tag })); };
       const favCount = Object.keys(P.S.fav).filter((id) => P.recipe(id)).length;
       const hidden = P.tags({ hidden: true }).filter((t) => P.S.tags.hidden[t.id]);
+      const nav = (fn) => () => { close(); if (P.isMedium()) { state.drawer = false; syncSide(); } fn(); };
       return [
+        P.menuItem({ label: "Ask AI what to cook", icon: "sparkle", on: P.route.mode === "ai", onClick: nav(() => openAI()) }),
+        P.menuItem({ label: "Shopping list", icon: "cart", count: P.shop.count() || undefined, on: P.route.mode === "shop", onClick: nav(openShop) }),
+        h("div", { class: "pop-sep" }),
         h("div", { class: "pop-h" }, "Collections"),
         P.menuItem({ label: "All recipes", icon: "book", count: P.recipes().length, on: P.route.tag === "all", onClick: go("all") }),
         P.menuItem({ label: "Favorites", icon: "star", count: favCount, on: P.route.tag === "fav", onClick: go("fav") }),
@@ -288,6 +294,7 @@
     const tag = P.route.tag;
     if (isFiltered()) {
       return h("div", { class: "empty" }, h("p", {}, state.q ? `Nothing matches “${state.q}”.` : "Nothing matches those filters."),
+        state.q ? h("button", { class: "btn lime sm", type: "button", onClick: () => openAI(state.q) }, hi("sparkle"), "Ask AI to make it") : null,
         h("button", { class: "btn ghost sm", type: "button", onClick: () => { clearSearch(); state.filters = noFilters(); renderList(); } }, "Clear search and filters"));
     }
     const msg = { fav: "Tap the star on a recipe to keep it here.", recent: "Recipes you open show up here." }[tag];
@@ -339,7 +346,10 @@
     const keep = same ? els.scroll.scrollTop : 0;
     els.detail.classList.toggle("editing", mode !== "view");
     if (mode === "new") renderEditor(null);
-    else {
+    else if (mode === "ai" || mode === "shop") {
+      els.detail.classList.remove("cook");
+      P.panes[mode](els.top, els.scroll, { close: closePane });
+    } else {
       const r = id && P.recipe(id);
       if (!r) renderBlank();
       else if (mode === "edit") renderEditor(r);
@@ -373,6 +383,7 @@
     const fav = P.isFav(r.id);
     return h("div", { class: "hero" + (r.img ? "" : " empty") },
       r.img ? h("img", { src: P.photo(r.img), alt: r.title, decoding: "async", fetchpriority: "high", onClick: () => P.lightbox(P.photo(r.img), r.title) }) : h("span", { class: "hero-ph", html: icon("plate") }),
+      r.cr ? h(r.crl ? "a" : "span", { class: "credit", title: r.cr, ...(r.crl ? { href: r.crl, target: "_blank", rel: "noopener noreferrer" } : {}) }, `Photo: ${r.cr}`) : null,
       h("button", { class: "starbtn" + (fav ? " on" : ""), type: "button", "aria-pressed": String(fav), "aria-label": "Favorite", title: "Favorite", html: icon("star"), onClick: () => P.toggleFav(r.id) }));
   }
 
@@ -389,7 +400,7 @@
         h("section", { class: "col-ing" + (anyTicked ? " has-checks" : "") },
           h("div", { class: "sec-head" }, h("h2", { class: "section-h" }, "Ingredients"),
             h("button", { class: "linkbtn", type: "button", onClick: () => { P.clearChecks(r.id); renderDetail(); } }, "Uncheck all")),
-          scalerEl(r, servings), ingredientsEl(r, f)),
+          scalerEl(r, servings), ingredientsEl(r, f), shopBarEl(r, f)),
         h("section", { class: "col-steps" },
           h("div", { class: "sec-head" }, h("h2", { class: "section-h" }, "Directions"),
             h("button", { class: "linkbtn", type: "button", onClick: () => { P.clearSteps(r.id); renderDetail(); } }, "Start over")),
@@ -443,6 +454,7 @@
     els.scroll.querySelector('[data-role="scaler"]')?.replaceWith(scalerEl(r, servings));
     els.scroll.querySelector('[data-role="serves"]')?.replaceChildren(hi("people"), `Serves ${servings}`);
     els.scroll.querySelector(".ings")?.replaceWith(ingredientsEl(r, f));
+    els.scroll.querySelector(".shopbar")?.replaceWith(shopBarEl(r, f));
     if (focusLabel >= 0) els.scroll.querySelectorAll(".scaler button")[focusLabel]?.focus({ preventScroll: true });
   }
 
@@ -458,6 +470,7 @@
         li.classList.toggle("done", now);
         li.setAttribute("aria-checked", String(now));
         li.closest(".col-ing")?.classList.toggle("has-checks", P.checked(r.id).size > 0);
+        els.scroll.querySelector(".shopbar")?.replaceWith(shopBarEl(r, f));      // ticked = already have it
       };
       li.addEventListener("click", flip);
       li.addEventListener("keydown", (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); flip(); } });
@@ -614,7 +627,8 @@
       };
       go.addEventListener("click", run);
       url.addEventListener("keydown", (e) => e.key === "Enter" && (e.preventDefault(), run()));
-      importBar = h("div", { class: "import" }, h("div", { class: "import-row" }, url, go), status);
+      importBar = h("div", { class: "import" }, h("div", { class: "import-row" }, url, go), status,
+        h("button", { class: "textbtn", type: "button", onClick: () => openAI() }, hi("sparkle"), "Or describe a dish and let AI write it"));
     }
 
     const lines = (t) => t.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
@@ -624,6 +638,7 @@
       state.muteData = true;
       const id = P.saveRecipe({
         id: r?.id, title, tag: f.tag.value, sub: f.sub.value, img, src: f.src.value, video: f.video.value,
+        cr: img && img === (d.img || "") ? d.cr : "", crl: img && img === (d.img || "") ? d.crl : "",     // a new photo is not the old credit
         min: Math.round(+f.min.value) || null, serves: Math.max(1, Math.round(+f.serves.value) || 4),
         ing: lines(f.ing.value), steps: lines(f.steps.value),
       });
@@ -633,7 +648,7 @@
       P.toast(isNew ? "Recipe added." : "Saved.");
       P.go(P.pathFor({ tag: f.tag.value, id }));
     };
-    const cancel = () => P.go(P.pathFor({ tag: P.route.tag, id: r?.id }));
+    const cancel = () => (isNew ? closePane() : P.go(P.pathFor({ tag: P.route.tag, id: r?.id })));
     f.title.addEventListener("input", () => f.title.classList.remove("bad"));
 
     const del = async () => {
@@ -673,6 +688,50 @@
     if (isNew) queueMicrotask(() => els.scroll.querySelector(".import input")?.focus({ preventScroll: true }));
   }
 
+  /* ================= Ask AI, the shopping list, and getting back out of them ================= */
+  const openAI = (prefill) => { if (prefill) P.ai.prefill(prefill); P.go("ai"); };
+  const openShop = () => P.go("shop");
+
+  function closePane() {
+    const b = state.before;
+    if (b && P.validTag(b.tag) && (!b.id || P.recipe(b.id))) return P.go(P.pathFor({ tag: b.tag, id: b.id }));
+    P.go(P.pathFor({ tag: P.route.tag }));
+  }
+
+  function updateShopBadge() {
+    const n = P.shop.count(), btn = $("#btn-folder");
+    btn.classList.toggle("badged", n > 0);
+    if (n > 0) btn.dataset.badge = n > 99 ? "99+" : String(n); else delete btn.dataset.badge;
+  }
+
+  function onShop() {
+    updateShopBadge();
+    const { mode, id } = P.route;
+    if (mode === "shop") renderDetail();
+    else if (mode === "view" && id) {
+      const r = P.recipe(id);
+      if (r) els.scroll.querySelector(".shopbar")?.replaceWith(shopBarEl(r, P.scaleOf(r) / (r.serves || 4)));
+    }
+  }
+
+  /** "Add to shopping list", under the ingredients. Ticked ingredients are ones you already have, so they are left out. */
+  function shopBarEl(r, f) {
+    const ticked = P.checked(r.id);
+    const lines = r.ing.map((l, i) => (ticked.has(i) ? null : P.scaleLine(l, f))).filter(Boolean);
+    const inList = P.shop.has(r.id);
+    const skipped = r.ing.length - lines.length;
+    const add = () => {
+      const servings = P.scaleOf(r);
+      const res = P.shop.add(r, servings, lines);
+      P.toast(res.updated ? `Updated your list for ${servings} servings.` : `Added ${P.plural(res.added, "item")} to your shopping list.`, { action: { label: "View", fn: openShop } });
+    };
+    return h("div", { class: "shopbar" },
+      h("button", { class: "btn shopbtn " + (inList ? "in" : "lime"), type: "button", disabled: !lines.length, onClick: add },
+        hi(inList ? "check" : "cart"), !lines.length ? "Everything is ticked" : inList ? "Update shopping list" : "Add to shopping list"),
+      h("span", { class: "shopnote" }, lines.length ? `${P.plural(lines.length, "item")}${skipped ? ` · skipping the ${skipped} you ticked` : ""}` : "You already have it all"),
+      inList ? h("button", { class: "textbtn", type: "button", onClick: openShop }, "View list") : null);
+  }
+
   /* ================= navigation and layout ================= */
   function onRoute() {
     const raw = P.parseRoute(), narrow = P.isNarrow();
@@ -685,8 +744,9 @@
     if (raw.home) {
       const last = P.S.ui.last || {};
       P.route = { tag: P.validTag(last.tag) ? last.tag : DEFAULT.tag, id: null, mode: "view", home: true };
-    } else if (raw.mode === "new") {
-      P.route = { tag: P.validTag(raw.tag) ? raw.tag : P.validTag(P.route.tag) ? P.route.tag : DEFAULT.tag, id: null, mode: "new", home: false };
+    } else if (raw.mode === "new" || raw.mode === "ai" || raw.mode === "shop") {
+      // these panes borrow the list on the left for context, so they keep the tag you were in
+      P.route = { tag: P.validTag(raw.tag) ? raw.tag : P.validTag(P.route.tag) ? P.route.tag : DEFAULT.tag, id: null, mode: raw.mode, home: false };
     } else {
       if (!P.validTag(raw.tag)) return P.go("", { replace: true });
       if (raw.id && !P.recipe(raw.id)) return P.go(P.pathFor({ tag: raw.tag }), { replace: true });
@@ -695,6 +755,7 @@
 
     const { tag, id, mode } = P.route;
     const prev = state.rendered;
+    if (mode !== "view" && prev.built && prev.mode === "view" && prev.tag) state.before = { tag: prev.tag, id: prev.id };   // where Close returns to
     const tagChanged = prev.tag !== tag;
     if (tagChanged) { state.q = ""; els.search.value = ""; els.clear.hidden = true; state.filters = noFilters(); }
     if (tagChanged || !prev.built) renderList();
@@ -717,7 +778,7 @@
     if (P.isMedium()) { state.drawer = false; syncSide(); }
     syncNav();
     const r = id && P.recipe(id);
-    document.title = `${mode === "new" ? "New recipe" : r ? r.title : P.tagName(tag)} · Platter`;
+    document.title = `${{ new: "New recipe", ai: "Ask AI", shop: "Shopping list" }[mode] || (r ? r.title : P.tagName(tag))} · Platter`;
   }
 
   function onData() {
@@ -768,5 +829,7 @@
     focusSearch: () => { if (P.isNarrow() && P.route.home) return; els.search.focus(); els.search.select(); },
     fav: () => P.route.id && P.route.mode === "view" && P.toggleFav(P.route.id),
     cookOn: () => state.cook,
+    openAI,
+    openShop,
   });
 })();

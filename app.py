@@ -17,9 +17,12 @@ import time
 from urllib.parse import urljoin, urlparse
 
 import requests
+from dotenv import load_dotenv
 from flask import Flask, Response, abort, jsonify, render_template, request
 from urllib3.util import connection as urllib3_connection
 from werkzeug.utils import safe_join
+
+load_dotenv()          # local development only; on Render the variables come from the dashboard
 
 # some hosts hand back IPv6 addresses this machine cannot route to; ask for IPv4 only
 urllib3_connection.allowed_gai_family = lambda: socket.AF_INET
@@ -27,6 +30,10 @@ urllib3_connection.allowed_gai_family = lambda: socket.AF_INET
 BASE = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(BASE, "static")
 app = Flask(__name__, static_folder=None)          # assets are served by static_files() below
+
+from ai import bp as ai_bp  # noqa: E402  (after load_dotenv so it sees OPENAI_MODEL)
+
+app.register_blueprint(ai_bp)
 
 # ---------- assets: gzipped once, kept in memory ----------
 # Flask's own static route streams files, which compression middleware leaves alone — so the

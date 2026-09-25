@@ -16,6 +16,7 @@
   const blank = () => ({
     fav: {}, user: {}, edits: {}, gone: {}, checks: {}, scale: {}, notes: {}, steps: {},
     tags: { order: [], names: {}, covers: {}, hidden: {}, custom: [] },
+    shop: { recipes: [], extra: [], done: {}, hidden: {} },
     recent: [],
     ui: { sidebar: true, sort: "az", last: null },
   });
@@ -215,6 +216,8 @@
       min: rec.min || null,
       serves: rec.serves || 4,
       video: (rec.video || "").trim(),
+      cr: rec.cr || "",                       // who to thank for a photo that is not ours
+      crl: rec.crl || "",
       ing: rec.ing || [],
       steps: rec.steps || [],
     };
@@ -265,6 +268,7 @@
     const r = { tag: null, id: null, mode: "view", home: false };
     if (!parts.length) { r.home = true; return r; }
     if (parts[0] === "new") { r.mode = "new"; r.tag = parts[1] || null; return r; }
+    if (parts[0] === "ai" || parts[0] === "shop") { r.mode = parts[0]; return r; }
     if (parts[0] === "t") {
       r.tag = parts[1] || null;
       if (parts[2] === "r") { r.id = parts[3] || null; if (parts[4] === "edit") r.mode = "edit"; }
@@ -273,6 +277,7 @@
   };
   P.pathFor = ({ tag, id, mode }) => {
     if (mode === "new") return tag ? `new/${tag}` : "new";
+    if (mode === "ai" || mode === "shop") return mode;
     if (!tag) return "";
     return `t/${tag}${id ? `/r/${encodeURIComponent(id)}${mode === "edit" ? "/edit" : ""}` : ""}`;
   };
