@@ -15,7 +15,7 @@
   /* ---------- persisted state ---------- */
   const blank = () => ({
     fav: {}, user: {}, edits: {}, gone: {}, checks: {}, scale: {}, notes: {}, steps: {},
-    rate: {}, made: {}, plan: {}, pantry: { have: [], staples: true },
+    rate: {}, made: {}, plan: {}, pantry: { have: [], staples: true }, books: [],
     tags: { order: [], names: {}, covers: {}, hidden: {}, custom: [] },
     shop: { recipes: [], extra: [], done: {}, hidden: {} },
     recent: [],
@@ -125,9 +125,12 @@
     return hidden ? all : all.filter((t) => !S.tags.hidden[t.id]);
   };
   const SPECIAL = { all: "All recipes", fav: "Favorites", recent: "Recently viewed", top: "Top rated", made: "Cooked before", quick: "Under 30 minutes" };
-  P.isSpecial = (id) => id in SPECIAL;
-  P.validTag = (id) => !!id && (id in SPECIAL || P.tags({ hidden: true }).some((t) => t.id === id));
-  P.tagName = (id) => SPECIAL[id] || P.tags({ hidden: true }).find((t) => t.id === id)?.name || "Recipes";
+  const book = (id) => (typeof id === "string" && id.startsWith("bk") ? S.books.find((b) => b.id === id) : null);
+  P.isBook = (id) => !!book(id);
+  // a cookbook behaves like a collection: it lists recipes, but it is nobody's "tag"
+  P.isSpecial = (id) => id in SPECIAL || P.isBook(id);
+  P.validTag = (id) => !!id && (id in SPECIAL || P.isBook(id) || P.tags({ hidden: true }).some((t) => t.id === id));
+  P.tagName = (id) => SPECIAL[id] || book(id)?.name || P.tags({ hidden: true }).find((t) => t.id === id)?.name || "Recipes";
   P.coverOf = (t) => {
     const c = S.tags.covers[t.id];
     if (c && c.startsWith("data:")) return c;
@@ -144,9 +147,38 @@
     if (id === "top") return all.filter((r) => S.rate[r.id] >= 4);
     if (id === "made") return Object.keys(S.made).sort((a, b) => P.lastMade(b) - P.lastMade(a)).map((i) => P.recipe(i)).filter(Boolean);
     if (id === "quick") return all.filter((r) => r.min && r.min <= 30);
+    if (P.isBook(id)) return book(id).ids.map((i) => P.recipe(i)).filter(Boolean);
     return all.filter((r) => r.tag === id);
   };
   P.keepsOrder = (id) => id === "recent" || id === "made";      // collections that are already in a meaningful order
+
+  /* ---------- cookbooks: named lists, and a recipe can be in as many as you like ---------- */
+  const booksChanged = () => { P.save(); P.emit("books"); };
+  P.books = () => S.books;
+  P.booksOf = (recipeId) => S.books.filter((b) => b.ids.includes(recipeId));
+  P.addBook = (name, recipeId) => {
+    const id = "bk" + Date.now().toString(36);
+    S.books.push({ id, name: name.trim().slice(0, 40) || "My cookbook", ids: recipeId ? [recipeId] : [], created: Date.now() });
+    booksChanged();
+    return id;
+  };
+  P.renameBook = (id, name) => { const b = book(id); if (b && name.trim()) { b.name = name.trim().slice(0, 40); booksChanged(); } };
+  P.deleteBook = (id) => {
+    const i = S.books.findIndex((b) => b.id === id);
+    if (i < 0) return () => {};
+    const [gone] = S.books.splice(i, 1);
+    booksChanged();
+    return () => { S.books.splice(i, 0, gone); booksChanged(); };
+  };
+  /** Put a recipe in a cookbook, or take it out. Returns whether it is in it now. */
+  P.toggleInBook = (bookId, recipeId) => {
+    const b = book(bookId);
+    if (!b) return false;
+    const i = b.ids.indexOf(recipeId);
+    if (i >= 0) b.ids.splice(i, 1); else b.ids.push(recipeId);
+    booksChanged();
+    return i < 0;
+  };
 
   P.renameTag = (id, name) => { S.tags.names[id] = name.trim() || P.tagName(id); touch(); };
   P.setCover = (id, v) => { S.tags.covers[id] = v; touch(); };
@@ -344,22 +376,23 @@
   };
 
   /* ---------- router: #/  ·  #/t/<tag>  ·  #/t/<tag>/r/<id>[/edit]  ·  #/new[/<tag>]  ·  #/ai  #/shop  #/plan  #/pantry ---------- */
-  P.PANES = ["discover", "ai", "shop", "plan", "pantry"];        // whole-pane tools that borrow the list column for context
+  P.PANES = ["discover", "ai", "shop", "plan", "pantry", "stats", "shared"];        // whole-pane tools that borrow the list column for context
   P.route = { tag: "chicken", id: null, mode: "view", home: true };
   P.parseRoute = () => {
     const parts = location.hash.replace(/^#\/?/, "").split("/").map(decodeURIComponent).filter(Boolean);
     const r = { tag: null, id: null, mode: "view", home: false };
     if (!parts.length) { r.home = true; return r; }
     if (parts[0] === "new") { r.mode = "new"; r.tag = parts[1] || null; return r; }
-    if (P.PANES.includes(parts[0])) { r.mode = parts[0]; return r; }
+    if (P.PANES.includes(parts[0])) { r.mode = parts[0]; r.data = parts.slice(1).join("/"); return r; }
     if (parts[0] === "t") {
       r.tag = parts[1] || null;
       if (parts[2] === "r") { r.id = parts[3] || null; if (parts[4] === "edit") r.mode = "edit"; }
     } else r.home = true;
     return r;
   };
-  P.pathFor = ({ tag, id, mode }) => {
+  P.pathFor = ({ tag, id, mode, data }) => {
     if (mode === "new") return tag ? `new/${tag}` : "new";
+    if (mode === "shared") return `shared/${data || ""}`;
     if (P.PANES.includes(mode)) return mode;
     if (!tag) return "";
     return `t/${tag}${id ? `/r/${encodeURIComponent(id)}${mode === "edit" ? "/edit" : ""}` : ""}`;

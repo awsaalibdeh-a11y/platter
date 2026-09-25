@@ -85,6 +85,10 @@
     moon: '<path d="M19.4 14.6A7.9 7.9 0 0 1 9.4 4.6 7.9 7.9 0 1 0 19.4 14.6z"/>',
     auto: '<circle cx="12" cy="12" r="8.4"/><path d="M12 3.6v16.8A8.4 8.4 0 0 0 12 3.6z" fill="currentColor"/>',
     lock: '<rect x="5" y="10.4" width="14" height="9.8" rx="2.4"/><path d="M8.2 10.4V7.8a3.8 3.8 0 0 1 7.6 0v2.6"/><path d="M12 14.2v2.2"/>',
+    bookmark: '<path d="M6.5 4.2h11a1 1 0 0 1 1 1V20l-6.5-4.2L5.5 20V5.2a1 1 0 0 1 1-1z"/>',
+    wand: '<path d="M4.5 19.5l10-10M13 6l1.3-2.7L15.6 6l2.7 1.3-2.7 1.3-1.3 2.7L13 8.6l-2.7-1.3L13 6z"/><path d="M18.6 13.6l.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6.6-1.4z"/>',
+    camera: '<path d="M4 8.4a2 2 0 0 1 2-2h1.9l1.5-2h5.2l1.5 2H18a2 2 0 0 1 2 2v9.2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8.4z"/><circle cx="12" cy="12.8" r="3.5"/>',
+    mic: '<rect x="9" y="3.4" width="6" height="11" rx="3"/><path d="M5.8 11.4a6.2 6.2 0 0 0 12.4 0M12 17.6v3"/>',
     keyboard: '<rect x="2.8" y="6" width="18.4" height="12" rx="2.4"/><path d="M6.5 9.6h.1M10 9.6h.1M13.5 9.6h.1M17 9.6h.1M6.5 12.8h.1M17 12.8h.1M9 15.2h6"/>',
     fire: '<path d="M12 3.2c.7 3.4 5.2 5.2 5.2 10.2a5.2 5.2 0 0 1-10.4 0c0-1.9.9-3.3 2-4.4.3 1.5 1.1 2.3 2 2.7C10.6 8.8 10.5 6 12 3.2z"/>',
   };
@@ -320,7 +324,7 @@
     if (/\b(pasta|spaghetti|noodle|ramen|lasagn|macaroni|penne|linguine|fettuccine|pad thai)\b/.test(t)) return "pasta";
     if (/\b(dessert|cake|cookie|brownie|pie|tart|pudding|ice cream|cupcake|muffin|fudge|cheesecake)\b/.test(t)) return "desserts";
     if (/\b(breakfast|pancake|waffle|omelet|omelette|granola|oatmeal|french toast)\b/.test(t)) return "breakfast";
-    if (/\b(appetizer|starter|dip|hummus|bruschetta|nachos|canap)/.test(t)) return "appetizers";
+    if (/\b(appetizer|starter|dips?|hummus|guacamole|salsa|tzatziki|bruschetta|nachos|canap|spring rolls?|dumplings?)/.test(t)) return "appetizers";
     if (/\b(beef|steak|brisket|burger|meatball|meatloaf)\b/.test(t)) return "beef";
     if (/\b(salmon|shrimp|prawn|fish|tuna|cod|crab|lobster|scallop|seafood)\b/.test(t)) return "seafood";
     if (/\b(pork|bacon|ham|sausage|ribs)\b/.test(t)) return "pork";

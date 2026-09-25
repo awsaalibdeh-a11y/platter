@@ -56,6 +56,7 @@
     P.on("rate", onCook);
     P.on("made", onCook);
     P.on("plan", () => { syncQuick(); if (P.route.mode === "plan") renderDetail(); });
+    P.on("books", onBooks);
     P.on("units", () => P.route.mode === "view" && P.route.id && renderDetail());
     P.on("steps", (id) => id === P.route.id && P.route.mode === "view" && renderDetail());
     P.on("details", () => { if (P.route.mode === "view" && P.route.id || P.route.mode === "discover") renderDetail(); });
@@ -208,6 +209,12 @@
         coll("Cooked before", "chefHat", "made"),
         coll("Under 30 minutes", "clock", "quick"),
         h("div", { class: "pop-sep" }),
+        h("div", { class: "pop-h" }, "Cookbooks"),
+        ...P.books().map((b) => P.menuItem({ label: b.name, icon: "bookmark", count: P.inTag(b.id).length, on: P.route.tag === b.id, onClick: go(b.id) })),
+        P.menuItem({ label: "New cookbook", sub: P.books().length ? null : "Your own lists: date night, party food…", icon: "plus", onClick: nav(() => P.cookbooks.create()) }),
+        h("div", { class: "pop-sep" }),
+        P.menuItem({ label: "Your kitchen", sub: "What you've cooked, your streak, your favorites", icon: "chefHat", on: P.route.mode === "stats", onClick: nav(() => P.go("stats")) }),
+        h("div", { class: "pop-sep" }),
         P.menuItem({ label: "Surprise me", sub: "Open a random recipe", icon: "shuffle", onClick: nav(surprise) }),
         hidden.length ? [
           h("div", { class: "pop-sep" }), h("div", { class: "pop-h" }, "Hidden tags"),
@@ -244,7 +251,7 @@
   function shortcuts() {
     const keys = [["/", "Search"], ["j  k", "Next / previous recipe"], ["g", "Cook step by step"], ["h", "Ask the recipe helper"], ["e", "Edit"], ["f", "Favorite"],
       ["c", "Cook Mode"], ["n", "New recipe"], ["d", "Discover"], ["a", "Ask AI what to cook"], ["p", "What can I make?"], ["m", "Meal plan"],
-      ["s", "Shopping list"], ["r", "Surprise me"], ["t", "Light / dark"], ["[", "Hide the sidebar"], ["?", "This list"]];
+      ["s", "Shopping list"], ["y", "Your kitchen"], ["r", "Surprise me"], ["t", "Light / dark"], ["[", "Hide the sidebar"], ["?", "This list"]];
     P.sheet((close) => [
       h("h3", { class: "sheet-h" }, "Keyboard shortcuts"),
       h("div", { class: "keys" }, keys.map(([k, what]) => h("div", { class: "key-row" }, h("span", {}, k.split("  ").map((x) => h("kbd", {}, x))), h("span", {}, what)))),
@@ -265,7 +272,14 @@
   function sortMenu(anchor) {
     const sorts = [["az", "Title A–Z"], ["za", "Title Z–A"], ["new", "Newest first"], ["quick", "Quickest first"], ["fav", "Favorites first"], ["rating", "Top rated first"], ["cooked", "Most cooked first"]];
     const subs = [...new Set(P.inTag(P.route.tag).map((r) => r.sub).filter(Boolean))].sort();
+    const bookId = P.isBook(P.route.tag) ? P.route.tag : null;
     P.popover(anchor, (close) => [
+      bookId ? [
+        h("div", { class: "pop-h" }, "Cookbook"),
+        P.menuItem({ label: "Rename cookbook", icon: "pencil", onClick: () => { close(); P.cookbooks.rename(bookId); } }),
+        P.menuItem({ label: "Delete cookbook", icon: "trash", danger: true, onClick: () => { close(); P.cookbooks.remove(bookId); } }),
+        h("div", { class: "pop-sep" }),
+      ] : null,
       h("div", { class: "pop-h" }, "Sort by"),
       ...sorts.map(([k, l]) => P.menuItem({ label: l, on: P.S.ui.sort === k, onClick: () => { P.S.ui.sort = k; P.save(); renderList(); close(); } })),
       h("div", { class: "pop-sep" }),
@@ -438,6 +452,23 @@
     els.scroll.replaceChildren(h("div", { class: "blank" }, hi("plate"), h("p", {}, P.count(P.route.tag) || P.isSpecial(P.route.tag) ? "Pick a recipe from the list." : "Nothing here yet — add your first recipe with the + button.")));
   }
 
+  /** The bookmark: filled in when the recipe is in any cookbook. */
+  const bookBtn = (r) => {
+    const b = actBtn("bookmark", "Save to a cookbook", (e) => P.cookbooks.menu(e.currentTarget, r));
+    b.classList.toggle("on", P.booksOf(r.id).length > 0);
+    return b;
+  };
+
+  function onBooks() {
+    const { tag, mode, id } = P.route;
+    if (P.isBook(tag) || (tag && tag.startsWith("bk"))) {
+      if (!P.validTag(tag)) return P.go(P.pathFor({ tag: "all" }), { replace: true });
+      renderList();
+      els.title.textContent = P.tagName(tag);
+    }
+    if (mode === "view" && id) { const r = P.recipe(id); if (r) els.top.querySelector(".a-bookmark")?.replaceWith(bookBtn(r)); }
+  }
+
   const actBtn = (name, label, fn) => h("button", { class: `abtn a-${name}`, type: "button", title: label, "aria-label": label, html: icon(name), onClick: fn });
 
   function renderRecipe(r) {
@@ -448,6 +479,7 @@
       h("div", { class: "acts" },
         h("button", { class: "askbtn", type: "button", title: "Ask the recipe helper  ( H )", onClick: () => P.help.open(r) }, hi("sparkle"), h("span", {}, "Ask AI")),
         actBtn("calendar", "Add to meal plan", (e) => P.plan.menu(e.currentTarget, r)),
+        bookBtn(r),
         actBtn("printer", "Print", () => window.print()),
         actBtn("share", "Share", () => shareRecipe(r)),
         actBtn("copy", "Copy recipe", () => copyRecipe(r)),
@@ -551,6 +583,7 @@
     }, hi("check"), "I made this");
     return h("div", { class: "cookrow", "data-role": "cookrow" },
       h("button", { class: "btn lime cookbtn", type: "button", title: "Cook it one step at a time  ( G )", onClick: () => P.stepper.open(r) }, hi("chefHat"), "Start cooking"),
+      h("button", { class: "btn ghost cookbtn", type: "button", title: "Rewrite it with AI: vegetarian, lighter, quicker…", onClick: (e) => P.aitools.menu(e.currentTarget, r) }, hi("wand"), "Remix"),
       stars, made,
       times.length ? h("span", { class: "made-note" }, `Made ${times.length === 1 ? "once" : `${times.length}×`} · last ${P.ago(P.lastMade(r.id))}`) : null);
   }
@@ -703,14 +736,15 @@
   const editCurrent = () => P.route.id && P.go(P.pathFor({ tag: P.route.tag, id: P.route.id, mode: "edit" }));
 
   async function shareRecipe(r) {
-    const text = P.recipeText(r, P.scaleOf(r));
-    const url = r.user || r.edited ? "" : `${location.origin}/#/t/${r.tag}/r/${r.id}`;
+    let url;
+    try { url = await P.shareLink(r); } catch { url = ""; }
+    if (!url) { await P.copyText(P.recipeText(r, P.scaleOf(r))); P.toast("Recipe copied — paste it anywhere."); return; }
     if (navigator.share) {
-      try { await navigator.share(url ? { title: r.title, url } : { title: r.title, text }); return; }
+      try { await navigator.share({ title: r.title, url }); return; }
       catch (e) { if (e.name === "AbortError") return; }
     }
-    if (url) { await P.copyText(url); P.toast("Link copied."); }
-    else { await P.copyText(text); P.toast("Recipe copied — paste it anywhere."); }
+    await P.copyText(url);
+    P.toast(r.user || r.edited ? "Link copied. The whole recipe is inside it, so anyone can open it and save a copy." : "Link copied.", { ms: 4000 });
   }
 
   async function copyRecipe(r) {
@@ -798,8 +832,26 @@
       };
       go.addEventListener("click", run);
       url.addEventListener("keydown", (e) => e.key === "Enter" && (e.preventDefault(), run()));
+      /* a photo of a cookbook page, or pasted text: the AI reads it, the form fills in */
+      const fillFrom = (x, how) => {
+        f.title.value = x.title || "";
+        f.serves.value = x.serves || 4;
+        f.min.value = x.min || "";
+        f.ing.value = (x.ing || []).join("\n");
+        f.steps.value = (x.steps || []).join("\n");
+        f.about.value = x.about || "";
+        f.tag.value = P.guessTag(x.title, "", x.ing || []);
+        fillSubs();
+        f.sub.value = x.sub || "";
+        Object.assign(d, { level: x.level, serve: x.serve, diet: x.diet, nut: x.nut, kcal: x.kcal });     // kept when you press Done
+        status.classList.remove("err");
+        status.textContent = `Read from your ${how}. Check it over, add a photo if you like, then press Done.`;
+      };
       importBar = h("div", { class: "import" }, h("div", { class: "import-row" }, url, go), status,
-        h("button", { class: "textbtn", type: "button", onClick: () => openAI() }, hi("sparkle"), "Or describe a dish and let AI write it"));
+        h("div", { class: "import-more" },
+          h("button", { class: "btn white sm", type: "button", onClick: () => P.aitools.fromPhoto(fillFrom) }, hi("camera"), "From a photo"),
+          h("button", { class: "btn white sm", type: "button", onClick: () => P.aitools.fromText(fillFrom) }, hi("doc"), "Paste the text"),
+          h("button", { class: "textbtn", type: "button", onClick: () => openAI() }, hi("sparkle"), "Or describe a dish and let AI write it")));
     }
 
     const lines = (t) => t.split(/\r?\n/).map((s) => s.trim()).filter(Boolean);
@@ -942,7 +994,7 @@
       P.route = { tag: P.validTag(last.tag) ? last.tag : P.validTag(DEFAULT.tag) ? DEFAULT.tag : "all", id: null, mode: "view", home: true };
     } else if (raw.mode === "new" || P.PANES.includes(raw.mode)) {
       // these panes borrow the list on the left for context, so they keep the tag you were in
-      P.route = { tag: P.validTag(raw.tag) ? raw.tag : P.validTag(P.route.tag) ? P.route.tag : DEFAULT.tag, id: null, mode: raw.mode, home: false };
+      P.route = { tag: P.validTag(raw.tag) ? raw.tag : P.validTag(P.route.tag) ? P.route.tag : DEFAULT.tag, id: null, mode: raw.mode, data: raw.data || "", home: false };
     } else {
       if (!P.validTag(raw.tag)) return P.go("", { replace: true });
       if (raw.id && !P.recipe(raw.id)) return P.go(P.pathFor({ tag: raw.tag }), { replace: true });
@@ -975,8 +1027,8 @@
 
     syncRows(true);
     syncTiles();
-    if (!prev.built || prev.id !== id || prev.mode !== mode) renderDetail();
-    state.rendered = { tag, id, mode, built: true };
+    if (!prev.built || prev.id !== id || prev.mode !== mode || prev.data !== P.route.data) renderDetail();     // data: a different shared link
+    state.rendered = { tag, id, mode, data: P.route.data, built: true };
     state.carryQ = ""; state.carryFilters = null;
     if (mode === "view" && !P.route.home) {
       if (id) P.touchRecent(id);
@@ -988,7 +1040,7 @@
     syncQuick();
     const r = id && P.recipe(id);
     P.help.sync(mode === "view" ? r || null : null);
-    document.title = `${{ new: "New recipe", ai: "Ask AI", shop: "Shopping list", plan: "Meal plan", pantry: "What can I make?", discover: "Discover" }[mode] || (r ? r.title : P.tagName(tag))} · Platter`;
+    document.title = `${{ new: "New recipe", ai: "Ask AI", shop: "Shopping list", plan: "Meal plan", pantry: "What can I make?", discover: "Discover", stats: "Your kitchen", shared: "Shared recipe" }[mode] || (r ? r.title : P.tagName(tag))} · Platter`;
   }
 
   /** The Discover / Plan / Pantry / List buttons above the tiles: which one is open, and the counts. */

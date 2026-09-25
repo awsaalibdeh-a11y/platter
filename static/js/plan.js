@@ -124,6 +124,70 @@
     }, { label: "Add a recipe to the plan", class: "picker" });
   }
 
+  /* ---------- "plan the week for me" ---------- */
+  const DINNERS = new Set(["chicken", "poultry", "beef", "seafood", "pork", "lamb", "vegetarian", "pasta", "mains"]);
+  const DIET_OPTS = [["", "Anything"], ["vegetarian", "Vegetarian"], ["vegan", "Vegan"], ["gluten-free", "Gluten-free"], ["dairy-free", "Dairy-free"]];
+  const TIME_OPTS = [[0, "Any time"], [30, "30 min"], [45, "45 min"], [60, "1 hour"]];
+
+  /** Dinners for the empty days: varied (no tag or cuisine twice in a row), nothing cooked in the last two weeks,
+      favorites and your top-rated nudged up. Runs in the browser, instantly, no AI needed. */
+  function pickDinners(n, { diet, maxMin, favs }) {
+    const since = Date.now() - 14 * 864e5;
+    const planned = new Set(Object.values(P.S.plan).flat().map((e) => e.id));
+    const pool = P.recipes().filter((r) => DINNERS.has(r.tag) && r.img && (!diet || (r.diet || []).includes(diet)) && (!maxMin || (r.min && r.min <= maxMin)));
+    const score = (r) => Math.random() * 2 + (P.isFav(r.id) ? (favs ? 4 : 1) : 0) + (P.rating(r.id) >= 4 ? 1.2 : 0) + (r.level === "Easy" ? 0.3 : 0)
+      - (P.lastMade(r.id) > since ? 6 : 0) - (planned.has(r.id) ? 6 : 0);
+    const ranked = pool.map((r) => [score(r), r]).sort((a, b) => b[0] - a[0]).map(([, r]) => r);
+    const out = [];
+    for (let i = 0; i < n; i++) {
+      const prev = out[out.length - 1];
+      const pick = ranked.find((r) => !out.includes(r) && (!prev || (r.tag !== prev.tag && (!r.sub || r.sub !== prev.sub))))
+        || ranked.find((r) => !out.includes(r));
+      if (!pick) break;
+      out.push(pick);
+    }
+    return out;
+  }
+
+  function autoPlan(dates) {
+    const today = key(new Date());
+    const empty = dates.filter((d) => key(d) >= today && !P.plan.on(key(d)).length);
+    if (!empty.length) { P.toast("Every day from today already has something planned."); return; }
+    const o = { diet: "", maxMin: 0, favs: true, servings: 4 };
+    P.sheet((close) => {
+      const body = h("div", { class: "auto-body" });
+      const paint = () => {
+        const chip = (on, label, fn) => h("button", { class: "ai-chip" + (on ? " on" : ""), type: "button", "aria-pressed": String(on), onClick: () => { fn(); paint(); } }, label);
+        body.replaceChildren(
+          h("div", { class: "label" }, "Diet"), h("div", { class: "ai-chips" }, DIET_OPTS.map(([k, l]) => chip(o.diet === k, l, () => (o.diet = k)))),
+          h("div", { class: "label" }, "Time to cook"), h("div", { class: "ai-chips" }, TIME_OPTS.map(([k, l]) => chip(o.maxMin === k, l, () => (o.maxMin = k)))),
+          h("div", { class: "auto-row" },
+            h("span", { class: "label" }, "Serves"),
+            h("div", { class: "scaler" },
+              h("button", { type: "button", "aria-label": "Fewer", html: P.icon("minus"), disabled: o.servings <= 1, onClick: () => { o.servings--; paint(); } }),
+              h("span", { class: "lbl" }, hi("people"), String(o.servings)),
+              h("button", { type: "button", "aria-label": "More", html: P.icon("plus"), disabled: o.servings >= 12, onClick: () => { o.servings++; paint(); } }))),
+          h("label", { class: "auto-row check" }, h("button", { class: "switch", type: "button", role: "switch", "aria-checked": String(o.favs), onClick: () => { o.favs = !o.favs; paint(); } }), h("span", {}, "Lean on my favorites")));
+      };
+      paint();
+      const run = () => {
+        const picks = pickDinners(empty.length, o);
+        close();
+        if (!picks.length) { P.toast("Nothing in your library fits all of that. Loosen a filter and try again."); return; }
+        const undos = picks.map((r, i) => P.plan.add(r.id, key(empty[i]), o.servings));
+        P.toast(`Planned ${P.plural(picks.length, "dinner")}. Change any of them with ✕ and “Add a recipe”.`, { action: { label: "Undo", fn: () => undos.forEach((u) => u()) }, ms: 6000 });
+      };
+      return [
+        h("h3", { class: "sheet-h" }, "Plan the week for me"),
+        h("p", { class: "sheet-p" }, `Fills the ${P.plural(empty.length, "empty day")} from today with a varied mix of dinners from your library: nothing you've cooked in the last two weeks, and never the same kind twice in a row.`),
+        body,
+        h("div", { class: "sheet-btns" }, h("button", { class: "btn ghost", type: "button", onClick: close }, "Cancel"),
+          h("button", { class: "btn lime", type: "button", onClick: run }, hi("sparkle"), `Plan ${P.plural(empty.length, "dinner")}`)),
+      ];
+    }, { label: "Plan the week for me" });
+  }
+  P.plan.pick = pickDinners;
+
   /* ---------- the pane ---------- */
   let week = monday(new Date());                                   // which week the pane is showing
 
@@ -152,11 +216,14 @@
 
     const dayEl = (d) => {
       const k = key(d), items = P.plan.on(k);
+      const kcal = items.reduce((n, e) => n + (P.recipe(e.id)?.kcal || 0), 0);
       return h("section", { class: "plan-day" + (k === today ? " today" : "") + (k < today ? " past" : "") },
         h("div", { class: "plan-date" }, h("b", {}, d.toLocaleDateString(undefined, { weekday: "short" })), h("span", {}, String(d.getDate())), k === today ? h("em", {}, "Today") : null),
         h("div", { class: "plan-items" },
           items.map((e) => itemEl(k, e)),
-          h("button", { class: "plan-add", type: "button", onClick: () => picker(k) }, hi("plus"), items.length ? "Add another" : "Add a recipe")));
+          h("div", { class: "plan-day-foot" },
+            h("button", { class: "plan-add", type: "button", onClick: () => picker(k) }, hi("plus"), items.length ? "Add another" : "Add a recipe"),
+            kcal ? h("span", { class: "plan-kcal", title: "Calories per person for what's planned today (AI estimate)" }, hi("fire"), `${kcal.toLocaleString()} kcal`) : null)));
     };
 
     const addWeek = () => {
@@ -181,7 +248,8 @@
           h("button", { type: "button", class: isThisWeek ? "on" : "", onClick: () => { week = monday(new Date()); P.emit("plan"); } }, "This week"),
           h("button", { type: "button", "aria-label": "Next week", html: P.icon("chevronRight"), onClick: () => go(1) })),
         h("span", { class: "chip" }, hi("calendar"), range),
-        planned.length ? h("span", { class: "chip" }, hi("book"), P.plural(planned.length, "meal")) : null),
+        planned.length ? h("span", { class: "chip" }, hi("book"), P.plural(planned.length, "meal")) : null,
+        h("button", { class: "btn lime sm auto-btn", type: "button", onClick: () => autoPlan(dates) }, hi("sparkle"), "Plan it for me")),
       h("div", { class: "plan-days" }, dates.map(dayEl)),
       h("div", { class: "plan-foot" },
         h("button", { class: "btn lime", type: "button", disabled: !planned.length, onClick: addWeek }, hi("cart"), "Add this week to my shopping list"),

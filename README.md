@@ -15,14 +15,24 @@ like an iPad app, in a browser.
 - **A door at the front**: on the first visit Platter asks for its creator's name. The right name (any capitalisation)
   opens it for good; a wrong one gives 30 minutes with a timer in the corner, then Platter closes behind a lock
   screen until the name is given (`static/js/gate.js`). It is stored in the visitor's browser, like everything else
+- **Remix with AI**: "make it vegetarian / vegan / healthier / quicker / spicier / kid-friendly / air fryer…" or type your
+  own change; the rewritten recipe is saved as a new one, with what changed in its notes
+- **Read a recipe in from a photo or pasted text**: snap a cookbook page, a card or a screenshot (or paste any recipe
+  text) and AI fills in the form, copying the author's amounts and method faithfully
+- **Cookbooks**: your own named lists ("Date night", "Holiday baking"); a recipe can be in as many as you like
+- **Your kitchen**: meals cooked, your streak, a cooking calendar of the last 18 weeks, your most-cooked dishes and cuisines
+- **Share links for your own recipes**: the whole recipe travels (compressed) inside the link, so anyone who opens it
+  can save a copy; no account, and the recipe never touches the server
 - **Recipe helper**: stuck on a step? Select any words in a recipe and tap "Ask AI about this", tap **Explain** on a step, or open the helper and ask. The recipe (at your servings, in your units) goes along as context, and the answer streams in
-- **Cook step by step**: one step at a time, full screen and big type, with the ingredients that step uses, its timers, read-aloud, swipe or arrow keys, and "I made this" at the end
+- **Cook step by step**: one step at a time, full screen and big type, with the ingredients that step uses, its timers, read-aloud,
+  **voice control** (say "next", "back", "repeat", "timer"; Chrome and Edge), swipe or arrow keys, and "I made this" at the end
 - **Every recipe described**: a short description, difficulty, calories and a protein/carbs/fat estimate per serving, a serving suggestion, a tip and diet labels (vegetarian, vegan, gluten-free, dairy-free, spicy). Filter any tag by diet, Easy or Under 30 minutes
 - **Discover**: the front page, with a recipe of the day, today's plan, quick dinners, what's new, cuisines, diets and "cook it again"; the picks change once a day
 - **You might also like** under every recipe, matched on shared ingredients, tag and cuisine
 - **Dark mode**: Auto, Light or Dark in the settings menu (the people icon), or press `t`
 - **What can I make?**: type what is in your kitchen and every recipe is ranked by how much of it you already have, with "Add missing" straight to the shopping list
-- **Meal plan**: put recipes on the days you will cook them, adjust servings, tick them off as cooked, then add the whole week to the shopping list in one tap
+- **Meal plan**: put recipes on the days you will cook them, adjust servings, tick them off as cooked, see calories per day, let
+  **Plan it for me** fill the empty days with a varied mix (by diet, time and your favorites), then add the whole week to the shopping list in one tap
 - **Ratings and a cooked log**: five stars and "I made this" on every recipe; sort by top rated or most cooked, and open the Top rated, Cooked before and Under 30 minutes collections
 - **US ⇄ metric** in one tap: cups, ounces and pounds become ml and g (and back), and oven temperatures in the directions convert too
 - **Search across tags**: the search box searches the tag you are in and offers "N more in All recipes"
@@ -91,7 +101,7 @@ changing colours in `style.css`.
 
 ```
 app.py                 Flask: page, cached/gzipped assets, /api/import (SSRF-guarded)
-ai.py                  /api/ai/ideas, /api/ai/recipe (OpenAI) and /api/ai/photo (free photo sources)
+ai.py                  /api/ai/ideas, /api/ai/recipe, /api/ai/remix, /api/ai/extract, /api/ai/ask (OpenAI) and /api/ai/photo (free photo sources)
 templates/index.html   the three panes
 static/style.css       every size measured from the reference, in rem
 static/js/util.js      icons, quantity parser and scaler
@@ -103,6 +113,9 @@ static/js/plan.js      the meal plan: days, servings, "add the week to the shopp
 static/js/pantry.js    "What can I make?": ranks recipes by what is in the kitchen
 static/js/ai.js        the Ask AI pane
 static/js/gate.js      the "name the creator" door and its 30-minute timer
+static/js/aitools.js   Remix, and reading a recipe in from a photo or text
+static/js/books.js     cookbooks, and the Your kitchen page
+static/js/share.js     share links that carry the recipe, and the page they open
 static/js/help.js      the recipe helper: select-to-ask, Explain, the streaming chat panel
 static/js/steps.js     cook step by step
 static/js/discover.js  the Discover front page
@@ -116,4 +129,4 @@ static/js/views.js     tiles, list, recipe, editor
 static/js/main.js      start-up and keyboard shortcuts
 ```
 
-Keys: `/` search · `j`/`k` next/previous · `g` cook step by step · `h` recipe helper · `e` edit · `f` favourite · `c` Cook Mode · `n` new · `d` Discover · `a` Ask AI · `s` shopping list · `p` what can I make · `m` meal plan · `r` random recipe · `t` light/dark · `[` sidebar · `?` all shortcuts.
+Keys: `/` search · `j`/`k` next/previous · `g` cook step by step · `h` recipe helper · `e` edit · `f` favourite · `c` Cook Mode · `n` new · `d` Discover · `a` Ask AI · `s` shopping list · `y` your kitchen · `p` what can I make · `m` meal plan · `r` random recipe · `t` light/dark · `[` sidebar · `?` all shortcuts.

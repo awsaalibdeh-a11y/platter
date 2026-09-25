@@ -824,6 +824,62 @@ body.helper-open .dock { right: calc(min(25rem, 100vw - 2rem) + 2.2rem); }
   .cookrow .switch-wrap { margin-left: 0; }
 }
 
+/* ================= remix, reading a recipe in, cookbooks, your kitchen, shared links ================= */
+.popover.remix { width: 23rem; }
+.remix-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.35rem; padding: 0.2rem 0.45rem 0.45rem; }
+.remix-opt { display: flex; align-items: center; gap: 0.45rem; padding: 0.55rem 0.65rem; border: 0; border-radius: 0.75rem; background: var(--chip); color: var(--ink); font-size: 0.8rem; font-weight: 600; text-align: left; cursor: pointer; }
+.remix-opt:hover, .remix-opt:focus-visible { background: var(--lime-soft); color: #33430a; outline: 0; }
+.remix-opt .ic { width: 0.95rem; height: 0.95rem; color: #7ea11a; }
+.cookbtn.ghost { background: transparent; }
+.working { display: grid; justify-items: center; gap: 0.6rem; padding: 0.6rem 0 0.4rem; text-align: center; }
+.spin.big { width: 2rem; height: 2rem; border-width: 3px; color: #7ea11a; }
+.import-more { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem 0.7rem; }
+.abtn.a-bookmark.on { color: #7ea11a; }
+.abtn.a-bookmark.on .ic { fill: currentColor; }
+.plan-day-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.4rem; }
+.plan-kcal { display: inline-flex; align-items: center; gap: 0.25rem; color: var(--muted); font-size: 0.72rem; font-weight: 600; }
+.plan-kcal .ic { width: 0.8rem; height: 0.8rem; color: #d9824b; }
+.auto-btn { margin-left: auto; }
+.auto-body { display: grid; gap: 0.55rem; }
+.auto-body .label { margin-top: 0.3rem; }
+.auto-row { display: flex; align-items: center; gap: 0.8rem; margin-top: 0.3rem; }
+.auto-row.check { font-size: 0.88rem; cursor: pointer; }
+.kstats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.6rem; margin-top: 1.2rem; }
+.kstat { display: grid; gap: 0.1rem; padding: 0.85rem 0.9rem; border-radius: 1rem; background: #fff; box-shadow: 0 0 0 1px rgba(60, 50, 20, 0.07); }
+.kstat .ic { width: 1.05rem; height: 1.05rem; color: #7ea11a; }
+.kstat b { font-size: 1.6rem; font-weight: 800; letter-spacing: -0.03em; line-height: 1.15; }
+.kstat small { color: var(--muted); font-size: 0.72rem; font-weight: 600; }
+.ksec .sec-head { margin-top: 2rem; }
+.heat { display: grid; grid-auto-flow: column; grid-template-rows: repeat(7, 1fr); gap: 3px; max-width: 34rem; }
+.hm { display: block; aspect-ratio: 1; border-radius: 3px; background: #ece9df; }
+.hm.l1 { background: #d4e99a; }
+.hm.l2 { background: #a9cc3f; }
+.hm.l3 { background: #6f9212; }
+.hm.future { opacity: 0.3; }
+.heat-key { display: flex; align-items: center; gap: 4px; margin-top: 0.6rem; color: var(--muted); font-size: 0.7rem; }
+.heat-key .hm { width: 0.75rem; }
+.ktop { display: grid; gap: 0.35rem; }
+.ktop-row { display: flex; align-items: center; gap: 0.7rem; padding: 0.35rem 0.5rem; border: 0; border-radius: 0.85rem; background: #fff; box-shadow: 0 0 0 1px rgba(60, 50, 20, 0.06); color: inherit; text-align: left; cursor: pointer; }
+.ktop-row:hover { background: #fbfbf7; }
+.ktop-row em { margin-left: auto; color: #5c7f0c; font-style: normal; font-weight: 800; }
+.ktop-n { width: 1.2rem; color: var(--muted); font-size: 0.8rem; font-weight: 800; text-align: center; }
+.kbars { display: grid; gap: 0.45rem; max-width: 34rem; }
+.kbar { display: grid; grid-template-columns: 9rem 1fr 2rem; align-items: center; gap: 0.7rem; font-size: 0.82rem; }
+.kbar span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kbar i { height: 0.55rem; border-radius: 99px; background: #ece9df; overflow: hidden; }
+.kbar em { display: block; height: 100%; border-radius: inherit; background: var(--lime-2); }
+.kbar b { color: var(--muted); font-size: 0.75rem; text-align: right; }
+.shared-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 0.8rem; margin: 1rem 0 0.2rem; padding: 0.7rem 0.9rem; border-radius: 1rem; background: var(--lime-soft); color: #33430a; font-size: 0.86rem; font-weight: 600; }
+.shared-bar .btn { margin-left: auto; }
+.shared-bar .ic { width: 1rem; height: 1rem; }
+.recipe.shared .step, .recipe.shared .ing { cursor: default; }
+@media (max-width: 720px) {
+  .kstats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kbar { grid-template-columns: 6.5rem 1fr 1.6rem; }
+  .popover.remix { width: 100%; }
+  .auto-btn { margin-left: 0; }
+}
+
 /* ================= the door: name the creator ================= */
 html[data-gate="ask"] .app { filter: blur(14px) saturate(0.85); pointer-events: none; user-select: none; }
 html[data-gate="locked"] .app { visibility: hidden; }

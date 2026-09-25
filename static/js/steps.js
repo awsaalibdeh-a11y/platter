@@ -39,7 +39,22 @@
   };
   const hush = () => canSpeak && speechSynthesis.cancel();
 
+  /* ---------- hands-free: say "next", "back", "repeat"… ---------- */
+  const Recognizer = window.SpeechRecognition || window.webkitSpeechRecognition;
+  /** What a heard phrase asks for. Kept apart from the microphone so it can be tested without one. */
+  const heard = (t) => {
+    t = ` ${String(t).toLowerCase()} `;
+    if (/\b(close|exit|quit)\b/.test(t)) return "close";
+    if (/\b(back|previous|last step|go back)\b/.test(t)) return "back";
+    if (/\b(repeat|again|read( it)?|say (it|that)|what was that)\b/.test(t)) return "repeat";
+    if (/\btimer\b/.test(t)) return "timer";
+    if (/\b(stop|quiet|shush|silence|pause)\b/.test(t)) return "hush";
+    if (/\b(next|forward|continue|go on|done|ok(ay)? next|finished)\b/.test(t)) return "next";
+    return "";
+  };
+
   P.stepper = {
+    heard,
     open(r) {
       if (!r || !r.steps.length) return;
       const done = P.stepsDone(r.id);
@@ -59,17 +74,19 @@
         els.prev = h("button", { class: "btn ghost sp-prev", type: "button", onClick: () => go(-1) }, hi("chevron"), "Back");
         els.next = h("button", { class: "btn lime sp-next", type: "button", onClick: () => go(1) });
         els.speak = h("button", { class: "sp-tool", type: "button", onClick: toggleSpeak });
+        els.voice = h("button", { class: "sp-tool", type: "button", onClick: toggleVoice });
         return [
           h("header", { class: "sp-head" },
             h("button", { class: "sp-tool", type: "button", title: "Close  ( Esc )", "aria-label": "Close", html: P.icon("x"), onClick: close }),
             h("div", { class: "sp-title" }, h("b", {}, r.title), els.count),
+            Recognizer ? els.voice : null,
             canSpeak ? els.speak : null,
             h("button", { class: "sp-tool ask", type: "button", onClick: askStep }, hi("sparkle"), h("span", {}, "Ask AI"))),
           h("div", { class: "sp-bar" }, els.bar),
           els.body,
           h("footer", { class: "sp-foot" }, els.prev, els.next),
         ];
-      }, { label: `Cook ${r.title} step by step`, class: "stepper", onClose: () => { hush(); P.cook.set(wasAwake); document.removeEventListener("keydown", onKey); P.emit("steps", r.id); } });
+      }, { label: `Cook ${r.title} step by step`, class: "stepper", onClose: () => { stopVoice(); hush(); P.cook.set(wasAwake); document.removeEventListener("keydown", onKey); P.emit("steps", r.id); } });
 
       function show() {
         const n = r.steps.length;
@@ -119,6 +136,43 @@
         els.speak.title = on ? "Stop reading aloud" : "Read each step aloud";
         els.speak.replaceChildren(hi(on ? "volume" : "volumeOff"), h("span", {}, on ? "Reading aloud" : "Read aloud"));
       }
+      /* voice: the browser listens (Chrome and Edge, with microphone permission); a silence ends a listening
+         session, so it starts again until it is switched off */
+      let rec = null, listening = false;
+      function paintVoice() {
+        if (!Recognizer) return;
+        els.voice.classList.toggle("on", listening);
+        els.voice.setAttribute("aria-pressed", String(listening));
+        els.voice.title = listening ? "Stop listening" : "Hands-free: say “next”, “back”, “repeat” or “timer”";
+        els.voice.replaceChildren(hi("mic"), h("span", {}, listening ? "Listening" : "Voice"));
+      }
+      function startVoice() {
+        rec = new Recognizer();
+        rec.lang = navigator.language || "en-US";
+        rec.continuous = true;
+        rec.interimResults = false;
+        rec.onresult = (e) => {
+          const said = e.results[e.results.length - 1][0].transcript;
+          const act = heard(said);
+          if (act === "next") go(1);
+          else if (act === "back") go(-1);
+          else if (act === "repeat" && !finished) say(`Step ${i + 1}. ${P.convertText(r.steps[i])}`);
+          else if (act === "timer" && !finished) { const t = P.cook.findTimers(r.steps[i])[0]; if (t) P.cook.start(t.seconds, `Step ${i + 1}`); else P.toast("This step has no time in it."); }
+          else if (act === "hush") hush();
+          else if (act === "close") els.close();
+        };
+        rec.onerror = (e) => {
+          if (e.error === "not-allowed" || e.error === "service-not-allowed") { listening = false; paintVoice(); P.toast("Voice needs permission to use the microphone."); }
+        };
+        rec.onend = () => { if (listening) { try { rec.start(); } catch { /* already started */ } } };
+        listening = true;
+        try { rec.start(); } catch { /* already started */ }
+        paintVoice();
+        P.toast("Listening. Say “next”, “back”, “repeat”, “timer” or “close”.", { ms: 4000 });
+      }
+      function stopVoice() { listening = false; try { rec?.stop(); } catch { /* not running */ } rec = null; if (els.voice) paintVoice(); }
+      function toggleVoice() { if (listening) stopVoice(); else startVoice(); }
+
       function toggleSpeak() {
         P.S.ui.speak = !P.S.ui.speak;
         P.save();
@@ -147,6 +201,7 @@
         if (Math.abs(dx) > 60) go(dx < 0 ? 1 : -1);
       });
 
+      paintVoice();
       show();
       els.next.focus({ preventScroll: true });
     },

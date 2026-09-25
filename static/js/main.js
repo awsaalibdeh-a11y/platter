@@ -25,6 +25,7 @@
       case "m": P.views.openPlan(); break;
       case "r": P.views.surprise(); break;
       case "d": P.views.openDiscover(); break;
+      case "y": P.go("stats"); break;
       case "h": P.views.help(); break;
       case "g": P.views.cookSteps(); break;
       case "t": P.views.toggleTheme(); break;

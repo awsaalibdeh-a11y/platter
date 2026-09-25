@@ -84,7 +84,8 @@ def _json(raw):
     raise AIError("The AI gave a reply I couldn't read. Try rephrasing.")
 
 
-def _ask(system, user, max_tokens):
+def _ask(system, user, max_tokens, read_timeout=25, tries=2):
+    """One JSON-mode chat call. `user` is text, or a list of content parts (text and an image)."""
     key = os.environ.get("OPENAI_API_KEY")
     if not key:
         raise AIError("AI isn't switched on for this site yet.", 503)
@@ -97,14 +98,14 @@ def _ask(system, user, max_tokens):
     if re.match(r"^(gpt-5|o\d)", MODEL):
         body["reasoning_effort"] = EFFORT
     resp = None
-    for attempt in range(2):
+    for attempt in range(tries):
         try:
             resp = requests.post(OPENAI_URL,
                                  headers={"Content-Type": "application/json", "Authorization": f"Bearer {key}"},
-                                 json=body, timeout=(6, 25))
+                                 json=body, timeout=(6, read_timeout))
             break
         except requests.RequestException:
-            if attempt:
+            if attempt == tries - 1:
                 raise AIError("Couldn't reach the AI service. Try again in a moment.")
     if not resp.ok:
         log.error("OpenAI %s: %s", resp.status_code, resp.text[:400])
@@ -502,3 +503,91 @@ def photo():
         _photos.clear()
     _photos[key] = (time.time(), found or {})
     return jsonify(found or {})
+
+
+# ---------- remix a recipe, and read one from a photo or pasted text ----------
+_RULES = """- "ingredients": 5 to 20 strings, each starting with an amount and unit (cup, tbsp, tsp, oz, lb, g, ml) or a plain count, then the ingredient, then any prep after a comma: "2 cloves garlic, minced". Only salt, pepper, frying oil and garnish may say "to taste" or "as needed".
+- "steps": short imperative steps without numbers; times ("simmer for 10 minutes") and temperatures ("425°F") inside the text. Meat, poultry, fish and eggs cooked to safe temperatures.
+- "about": 2 or 3 sentences, max 380 characters: what the dish is and how it tastes; no hype words. "level": "Easy", "Medium" or "Hard". "serve": what to serve it with, max 70 characters.
+- "kcal", "protein", "carbs", "fat": estimates per serving, integers. "diet": labels strictly true of it, from "vegetarian", "vegan", "gluten-free", "dairy-free", "spicy"."""
+
+REMIX_PROMPT = """You rework a home-cooking recipe the way a good cook would, following the change the cook asks for. Keep the dish recognisable and keep whatever doesn't need to change; change ingredients, amounts, steps, times and servings wherever the change needs it. If the change can't be done honestly (a vegetarian version of a dish that is nothing but meat), make the closest honest version and say so.
+- "title": a short, honest name for the new version, e.g. "Paneer Butter Masala" or "Lighter Chicken Tikka Masala".
+""" + _RULES + """
+- "changes": 2 to 4 short strings (max 90 characters each) saying what you changed and why.
+- "notes": one practical tip for this version, max 200 characters.
+Return ONLY JSON: {"title": str, "minutes": int, "serves": int, "ingredients": [str], "steps": [str], "changes": [str], "notes": str, "about": str, "level": str, "serve": str, "kcal": int, "protein": int, "carbs": int, "fat": int, "diet": [str]}"""
+
+EXTRACT_PROMPT = """You read a recipe from a photo (a cookbook page, a card, a screenshot, handwriting) or from pasted text, and write it out as JSON for a cooking app. Copy it faithfully: keep the author's title, amounts, ingredients and method; don't add or invent anything, except to split run-on text into clean ingredient lines and separate steps, and to fix obvious OCR slips.
+- "title": the recipe's own title, or a short plain one if it has none. "minutes": total time if stated or clearly implied, else 0. "serves": if stated, else 4. "cuisine": if obvious, else "".
+- "ingredients": one string per ingredient, amount first, prep after a comma. "steps": the method as separate steps without numbers.
+- "about", "level", "serve", "kcal", "protein", "carbs", "fat", "diet": your own short description and estimates, by these rules:
+""" + _RULES + """
+If there is no recipe in it, return {"error": "one short sentence saying what you see instead"}.
+Return ONLY JSON: {"title": str, "cuisine": str, "minutes": int, "serves": int, "ingredients": [str], "steps": [str], "about": str, "level": str, "serve": str, "kcal": int, "protein": int, "carbs": int, "fat": int, "diet": [str]}"""
+
+STRIP_NO = re.compile(r"^\s*(?:step\s*)?\d+[.):]\s*", re.I)
+
+
+def _parts(data):
+    ings = [_s(x, 160) for x in (data.get("ingredients") or []) if isinstance(x, str) and _s(x, 160)][:30]
+    steps = [STRIP_NO.sub("", _s(x, 600)) for x in (data.get("steps") or []) if isinstance(x, str) and _s(x, 600)][:20]
+    return ings, steps
+
+
+@bp.post("/api/ai/remix")
+def remix():
+    body = request.get_json(silent=True) or {}
+    rec = body.get("recipe") if isinstance(body.get("recipe"), dict) else {}
+    title, how = _s(rec.get("title"), 120), _s(body.get("how"), 200)
+    if not title or len(how) < 3:
+        return jsonify(error="Say how you'd like the recipe changed."), 400
+    if not _configured():
+        return jsonify(error="AI isn't switched on for this site yet.", code="off"), 503
+    if _limited("llm"):
+        return jsonify(error="That's a lot of AI requests. Give it a little while."), 429
+    ings = [_s(x, 200) for x in (rec.get("ing") or [])[:40] if isinstance(x, str)]
+    steps = [_s(x, 700) for x in (rec.get("steps") or [])[:25] if isinstance(x, str)]
+    serves = _int(rec.get("serves"), 4, 1, 24) or 4
+    text = "\n".join(["THE RECIPE", title, f"Serves {serves}", "Ingredients:", *(f"- {i}" for i in ings),
+                      "Method:", *(f"{n}. {x}" for n, x in enumerate(steps, 1)), "", f"THE CHANGE THE COOK WANTS: {how}"])
+    try:
+        data = _ask(REMIX_PROMPT, text, 3400, read_timeout=45, tries=1)
+    except AIError as exc:
+        return jsonify(error=str(exc)), exc.status
+    new_ings, new_steps = _parts(data)
+    if len(new_ings) < 3 or len(new_steps) < 2:
+        return jsonify(error="The remix came back incomplete. Try again."), 502
+    changes = [_s(c, 120) for c in (data.get("changes") or [])[:4] if isinstance(c, str) and _s(c, 120)]
+    return jsonify(title=_s(data.get("title"), 90) or title, min=_int(data.get("minutes"), 0, 0, 900) or None,
+                   serves=_int(data.get("serves"), serves, 1, 24) or serves, ing=new_ings, steps=new_steps,
+                   notes=_s(data.get("notes"), 300), changes=changes, **details(data, new_ings))
+
+
+@bp.post("/api/ai/extract")
+def extract():
+    body = request.get_json(silent=True) or {}
+    text = str(body.get("text") or "")[:14000].strip()
+    image = str(body.get("image") or "")
+    if image and (len(image) > 7_000_000 or not re.match(r"^data:image/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]", image)):
+        return jsonify(error="That photo couldn't be read. Try a JPEG or PNG."), 400
+    if len(text) < 20 and not image:
+        return jsonify(error="Paste the whole recipe, or add a photo of it."), 400
+    if not _configured():
+        return jsonify(error="AI isn't switched on for this site yet.", code="off"), 503
+    if _limited("llm"):
+        return jsonify(error="That's a lot of AI requests. Give it a little while."), 429
+    intro = f"Here is the recipe:\n\n{text}" if text else "Here is a photo of the recipe."
+    user = [{"type": "text", "text": intro}, {"type": "image_url", "image_url": {"url": image, "detail": "high"}}] if image else intro
+    try:
+        data = _ask(EXTRACT_PROMPT, user, 3600, read_timeout=50, tries=1)
+    except AIError as exc:
+        return jsonify(error=str(exc)), exc.status
+    if data.get("error") and not data.get("ingredients"):
+        return jsonify(error=_s(data.get("error"), 160) or "I couldn't find a recipe in that."), 422
+    ings, steps = _parts(data)
+    if len(ings) < 2 or not steps:
+        return jsonify(error="I couldn't find a whole recipe in that. Try a sharper photo, or paste the text."), 422
+    return jsonify(title=_s(data.get("title"), 90) or "Untitled recipe", sub=_s(data.get("cuisine"), 24),
+                   min=_int(data.get("minutes"), 0, 0, 1440) or None, serves=_int(data.get("serves"), 4, 1, 99) or 4,
+                   ing=ings, steps=steps, **details(data, ings))

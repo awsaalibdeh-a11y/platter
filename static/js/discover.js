@@ -105,6 +105,8 @@
       again.length ? row("Cook it again", again, () => P.go(P.pathFor({ tag: "made" }))) : null,
       favs.length ? row("Your favorites", favs, () => P.go(P.pathFor({ tag: "fav" }))) : null,
       row("New in Platter", fresh),
+      P.books().length ? h("section", { class: "drow" }, h("div", { class: "drow-head" }, h("h2", {}, "Your cookbooks")),
+        h("div", { class: "dchips" }, P.books().map((b) => h("button", { class: "ai-chip", type: "button", onClick: () => P.go(P.pathFor({ tag: b.id })) }, hi("bookmark"), b.name, h("em", {}, ` ${P.inTag(b.id).length}`))))) : null,
       h("section", { class: "drow" }, h("div", { class: "drow-head" }, h("h2", {}, "Around the world")),
         h("div", { class: "dchips" }, cuisines.map((c) => h("button", { class: "ai-chip", type: "button", onClick: () => P.views.browse({ sub: c }) }, c, h("em", {}, ` ${counts[c]}`))))),
       row("Chicken, every way", chicken, () => P.go(P.pathFor({ tag: "chicken" }))),
@@ -117,6 +119,7 @@
       row("Something sweet", sweet, () => P.go(P.pathFor({ tag: "desserts" }))),
       h("div", { class: "dfoot" },
         h("button", { class: "btn ghost", type: "button", onClick: () => P.go("pantry") }, hi("jar"), "What can I make with what I have?"),
-        h("button", { class: "btn ghost", type: "button", onClick: () => P.go("ai") }, hi("sparkle"), "Ask AI for something new"))));
+        h("button", { class: "btn ghost", type: "button", onClick: () => P.go("ai") }, hi("sparkle"), "Ask AI for something new"),
+        h("button", { class: "btn ghost", type: "button", onClick: () => P.go("stats") }, hi("chefHat"), "Your kitchen"))));
   };
 })();

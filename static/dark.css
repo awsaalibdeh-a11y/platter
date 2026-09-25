@@ -282,6 +282,29 @@
 :root[data-theme="dark"] .dplan { background: var(--lime-soft); }
 :root[data-theme="dark"] .dplan .drow-head h2 { color: #c7e28d; }
 :root[data-theme="dark"] .dplan-item { background: #242424; }
+:root[data-theme="dark"] .remix-opt { background: var(--chip); color: var(--ink); }
+:root[data-theme="dark"] .remix-opt:hover, :root[data-theme="dark"] .remix-opt:focus-visible { background: var(--lime-soft); color: #cae28d; }
+:root[data-theme="dark"] .remix-opt .ic { color: #cce28d; }
+:root[data-theme="dark"] .spin.big { color: #cce28d; }
+:root[data-theme="dark"] .abtn.a-bookmark.on { color: #cce28d; }
+:root[data-theme="dark"] .plan-kcal { color: var(--muted); }
+:root[data-theme="dark"] .plan-kcal .ic { color: #d9824b; }
+:root[data-theme="dark"] .kstat { background: #242424; box-shadow: 0 0 0 1px rgba(60, 50, 20, 0.07); }
+:root[data-theme="dark"] .kstat .ic { color: #cce28d; }
+:root[data-theme="dark"] .kstat small { color: var(--muted); }
+:root[data-theme="dark"] .hm { background: #2b2924; }
+:root[data-theme="dark"] .hm.l1 { background: #d4e99a; color: var(--lime-ink); }
+:root[data-theme="dark"] .hm.l2 { background: #a9cc3f; color: var(--lime-ink); }
+:root[data-theme="dark"] .hm.l3 { background: #6f9212; }
+:root[data-theme="dark"] .heat-key { color: var(--muted); }
+:root[data-theme="dark"] .ktop-row { background: #242424; box-shadow: 0 0 0 1px rgba(60, 50, 20, 0.06); }
+:root[data-theme="dark"] .ktop-row:hover { background: #181814; }
+:root[data-theme="dark"] .ktop-row em { color: #c8e28d; }
+:root[data-theme="dark"] .ktop-n { color: var(--muted); }
+:root[data-theme="dark"] .kbar i { background: #2b2924; }
+:root[data-theme="dark"] .kbar em { background: var(--lime-2); }
+:root[data-theme="dark"] .kbar b { color: var(--muted); }
+:root[data-theme="dark"] .shared-bar { background: var(--lime-soft); color: #cae28d; }
 :root[data-theme="dark"] .gate { background: rgba(24, 26, 12, 0.42); }
 :root[data-theme="dark"][data-gate="locked"] .gate { background: var(--bg-side); }
 :root[data-theme="dark"] .gate-card { background: #242424; box-shadow: var(--pop); }
