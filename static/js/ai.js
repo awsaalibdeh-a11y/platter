@@ -125,6 +125,19 @@
     live.more.disabled = !!ai.making;
   }
 
+  /** The dishes AI has written for you, newest first: easy to find again once the ideas are gone. */
+  function madeWithAI() {
+    if (ai.ideas.length || ai.loading) return null;
+    const mine = Object.keys(P.S.user).reverse().map((id) => P.recipe(id)).filter((r) => r && /^AI /.test(r.dom || "")).slice(0, 8);
+    if (!mine.length) return null;
+    return h("section", { class: "ai-made" },
+      h("div", { class: "sec-head" }, h("h2", { class: "section-h" }, "Made with AI"), h("span", { class: "count-note" }, P.plural(mine.length, "recipe"))),
+      h("div", { class: "book-share" }, mine.map((r) => h("button", { class: "dplan-item ai-made-item", type: "button", onClick: () => P.go(P.pathFor({ tag: r.tag, id: r.id })) },
+        h("span", { class: "pi-thumb" }, r.img ? h("img", { src: P.photo(r.img, "small"), alt: "", loading: "lazy", referrerpolicy: "no-referrer" }) : null),
+        h("span", { class: "pi-title" }, r.title),
+        h("small", {}, [r.dom === "AI remix" ? "Remix" : P.tagName(r.tag), r.min ? P.fmtMin(r.min) : ""].filter(Boolean).join(" · "))))));
+  }
+
   function build() {
     if (!ctx || !ctx.scroll.isConnected) return;
     const off = ai.enabled === false;
@@ -166,7 +179,8 @@
       h("div", { class: "ai-form" }, input, go),
       h("div", { class: "ai-chips" }, chips),
       live.note, live.error, live.grid,
-      h("div", { class: "ai-more" }, live.more)));
+      h("div", { class: "ai-more" }, live.more),
+      madeWithAI()));
     paintCards();
     ctx.scroll.scrollTop = keep;
   }
@@ -175,7 +189,7 @@
     ctx = { top, scroll, close: pane.close };
     top.replaceChildren(
       h("span", { class: "tagpill ghost" }, "Ask AI"),
-      h("div", { class: "acts" }, h("button", { class: "btn ghost sm", type: "button", onClick: pane.close }, "Close")));
+      h("div", { class: "acts" }, h("button", { class: "editbtn", type: "button", onClick: pane.close }, hi("check"), "Done")));
     build();
     if (ai.enabled === null) {
       api("/api/ai/status").then((d) => { ai.enabled = !!d.enabled; build(); }).catch(() => { ai.enabled = true; });

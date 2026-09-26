@@ -215,6 +215,7 @@
       put(live.soon, going.length ? h("div", { class: "pan-soon" }, hi("clock"),
         h("span", {}, h("b", {}, "Use soon: "), going.map((x) => `${x.t} (${leftShort(x.days)})`).join(", ")),
         h("button", { class: "textbtn", type: "button", onClick: () => P.views.openAI(`Something that uses up ${going.map((x) => x.t).join(", ")} before it goes off`) }, hi("sparkle"), "Ask AI to use them up")) : null);
+      live.quick.classList.toggle("compact", terms.length > 0);
       put(live.quick, COMMON.map((c) => {
         const on = terms.includes(c);
         return h("button", { class: "ai-chip" + (on ? " on" : ""), type: "button", "aria-pressed": String(on), onClick: () => (on ? drop(c) : add(c)) }, c);

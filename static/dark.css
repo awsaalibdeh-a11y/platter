@@ -239,6 +239,10 @@
 :root[data-theme="dark"] .pi-serves button:hover:not(:disabled), :root[data-theme="dark"] .pi-x:hover { background: rgba(255, 255, 255, 0.081); }
 :root[data-theme="dark"] .plan-add { box-shadow: inset 0 0 0 1.5px #4a483f; color: var(--muted); }
 :root[data-theme="dark"] .plan-add:hover { background: var(--lime-soft); box-shadow: inset 0 0 0 1.5px var(--lime); color: #cae28d; }
+:root[data-theme="dark"] .plan-past { box-shadow: inset 0 0 0 1.5px var(--line); color: var(--muted); }
+:root[data-theme="dark"] .plan-past b { color: var(--ink-2); }
+:root[data-theme="dark"] .plan-past em { color: #c9e28d; }
+:root[data-theme="dark"] .plan-past:hover { background: var(--chip); }
 :root[data-theme="dark"] .pick:hover, :root[data-theme="dark"] .pick:focus-visible { background: #1f1f1b; }
 :root[data-theme="dark"] .pick-thumb { background: linear-gradient(145deg, #2c2a25, #3b3832); }
 :root[data-theme="dark"] .pick-t small { color: var(--muted); }
@@ -347,6 +351,14 @@
 :root[data-theme="dark"] .drow-head small { color: var(--muted); }
 :root[data-theme="dark"] .shop-basics { color: var(--muted); }
 :root[data-theme="dark"] .shop-basics .ic { color: #cce28d; }
+:root[data-theme="dark"] .chip.shopmode-btn { background: var(--lime); color: var(--lime-ink); }
+:root[data-theme="dark"] .chip.shopmode-btn .ic { color: var(--lime-ink); }
+:root[data-theme="dark"] .shopmode-btn.on { background: var(--chip); color: var(--ink); }
+:root[data-theme="dark"] .shop-progress { background: var(--bg-detail); box-shadow: 0 1px 0 var(--line); }
+:root[data-theme="dark"] .shop-track { background: var(--chip); }
+:root[data-theme="dark"] .shop-track i { background: var(--lime-2); }
+:root[data-theme="dark"] .ai-made-item small { color: var(--muted); }
+:root[data-theme="dark"] .ai-made-item:hover { background: var(--chip); }
 :root[data-theme="dark"] .qchip { background: var(--field); box-shadow: inset 0 0 0 1px rgba(60, 50, 20, 0.06); color: var(--ink-2); }
 :root[data-theme="dark"] .qchip:hover { background: var(--lime-soft); }
 :root[data-theme="dark"] .qchip.on { background: var(--lime); color: var(--lime-ink); }
@@ -482,3 +494,4 @@
 :root[data-theme="dark"] .ing.done .cb, :root[data-theme="dark"] .plan-item.done .pi-check { color: var(--lime-ink); }
 :root[data-theme="dark"] .dcard-fav { background: rgba(28, 28, 25, 0.9); }
 :root[data-theme="dark"] img { color-scheme: light; }
+:root[data-theme="dark"] .fridge-btn { background: #2b3514; color: #eef5d8; }

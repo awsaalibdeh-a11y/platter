@@ -13,7 +13,8 @@
   const BASICS = /^(?:(?:fine|coarse|ground|freshly ground|cracked|black|white|kosher|sea|table|flaky|cold|hot|warm|boiling)\s+)*(?:salt|pepper|peppercorns?|salt and pepper|water|ice|ice cubes|(?:vegetable|olive|extra virgin olive|cooking|sunflower|canola|neutral|frying|rapeseed)\s+oil|oil)$/;
 
   /* ---------- reading a line ---------- */
-  const SIZE_WORDS = /^(?:(?:large|medium|small|big|fresh|ripe|whole|boneless|skinless|raw|cooked|dried|frozen|canned|tinned|organic|extra)\s+)+/i;
+  // how it's bought, not what it is: "finely chopped fresh parsley" is parsley. ("Crushed" stays: crushed tomatoes are their own tin.)
+  const SIZE_WORDS = /^(?:(?:large|medium|small|big|fresh|freshly|ripe|whole|boneless|skinless|raw|cooked|dried|frozen|canned|tinned|organic|extra|minced|chopped|diced|sliced|grated|finely|roughly|coarsely|thinly|peeled|shredded|softened|melted|toasted|beaten|cubed|halved|quartered|trimmed|packed|sifted|crumbled)\s+)+/i;
   const IRREGULAR = { leaves: "leaf", loaves: "loaf", knives: "knife", halves: "half" };
   const ES_WORDS = new Set(["tomato", "potato", "mango", "hero", "echo"]);
   const UNCOUNTABLE = new Set(["garlic", "rice", "flour", "sugar", "salt", "butter", "milk", "water", "oil", "cheese", "cream", "honey", "pepper", "ginger", "bread", "pasta", "meat", "fish", "chicken", "beef", "pork", "lamb", "broccoli", "spinach", "lettuce", "parsley", "cilantro", "basil", "mint", "thyme", "dill", "rosemary", "yogurt", "vinegar", "wine", "stock", "broth"]);
@@ -85,7 +86,7 @@
   /* ---------- aisles ---------- */
   const AISLES = ["Produce", "Meat & fish", "Dairy & eggs", "Bakery & grains", "Pantry", "Spices", "Other"];
   const AISLE_RULES = [
-    ["Pantry", /\b(?:stock|broth|bouillon|(?:coconut|almond|soy|oat|rice) milk|peanut butter|almond butter|tomato (?:paste|puree|sauce)|soy sauce|fish sauce|hot sauce|worcestershire|vinegar|(?:black|kidney|pinto|cannellini|butter|white|baked|refried|red|borlotti) beans?|canned|tinned)\b/],
+    ["Pantry", /\b(?:oyster sauce|hoisin|teriyaki|(?:sweet )?chill?i sauce|bbq sauce|barbecue sauce|stock|broth|bouillon|(?:coconut|almond|soy|oat|rice) milk|peanut butter|almond butter|tomato (?:paste|puree|sauce)|soy sauce|fish sauce|hot sauce|worcestershire|vinegar|(?:black|kidney|pinto|cannellini|butter|white|baked|refried|red|borlotti) beans?|canned|tinned)\b/],
     ["Spices", /\b(?:salt|black pepper|white pepper|peppercorn|cumin|paprika|cinnamon|oregano|turmeric|cayenne|nutmeg|cardamom|garam|curry powder|curry paste|masala|saffron|allspice|bay leaf|bay leaves|star anise|za'atar|five[- ]spice|seasoning|spice|chili powder|chilli powder|chili flakes|red pepper flakes|ground (?:cumin|coriander|cinnamon|ginger|pepper|nutmeg|cloves?|turmeric|paprika|mustard|cardamom)|dried (?:oregano|thyme|basil|parsley|chili|chilli|herbs|mint|sage|rosemary|dill)|(?:garlic|onion|curry|chili|chilli|cayenne) powder|(?:cumin|coriander|fennel|mustard|caraway) seeds?)\b/],
     ["Meat & fish", /\b(?:chicken|beef|pork|lamb|turkey|duck|bacon|ham|sausage|chorizo|salami|prosciutto|mince|steak|brisket|ribs?|veal|venison|goat|fish|salmon|tuna|cod|haddock|trout|sea bass|snapper|tilapia|prawns?|shrimps?|crab|lobster|scallops?|mussels?|clams?|oysters?|squid|calamari|anchov(?:y|ies)|sardines?|mackerel|gammon|oxtail)\b/],
     ["Dairy & eggs", /\b(?:milk|butter|cream|cheese|yogh?urt|eggs?|parmesan|mozzarella|cheddar|feta|ricotta|mascarpone|halloumi|paneer|ghee|buttermilk|creme fraiche|crème fraîche)\b/],
@@ -96,8 +97,9 @@
   const aisleOf = (name) => (AISLE_RULES.find(([, re]) => re.test(name)) || ["Other"])[0];
 
   /* ---------- merging ---------- */
-  const textOf = (e) => {
-    if (!e.hasQty) return e.name;
+  /** How much, and what: { qty: "10 oz", name: "bean sprouts" }. */
+  const partsOf = (e) => {
+    if (!e.hasQty) return { qty: "", name: e.name };
     let qty = e.total, unit = "", tight = false;
     if (DISPLAY[e.fam]) {
       const [v, one, many] = DISPLAY[e.fam](e.total);
@@ -107,8 +109,13 @@
       unit = u ? (qty > 1.0001 ? u.many : u.one) : e.unitOne;
     }
     const name = !unit && qty > 1.0001 ? withLastWord(e.name, pluralWord) : e.name;
-    return `${P.fmtQty(qty)}${tight ? unit : unit ? ` ${unit}` : ""} ${e.size ? `(${e.size}) ` : ""}${name}`.replace(/\s+/g, " ").trim();
+    return { qty: `${P.fmtQty(qty)}${tight ? unit : unit ? ` ${unit}` : ""}${e.size ? ` (${e.size})` : ""}`, name };
   };
+  const textOf = (e) => { const p = partsOf(e); return `${p.qty} ${p.name}`.replace(/\s+/g, " ").trim(); };
+  /** One food measured two ways (by weight in one recipe, by the cup in another) is still one line: "10 oz + 1 cup bean sprouts". */
+  const joinedText = (es) => (es.every((e) => e.hasQty && e.fam !== "count")
+    ? `${es.map((e) => partsOf(e).qty).join(" + ")} ${es[0].name}`
+    : es.map(textOf).join(" + "));
 
   const collect = () => {
     const map = new Map();
@@ -144,9 +151,21 @@
     toggleBasics() { S().basics = S().basics === false; touch(); },
     sections() {
       const skipBasics = S().basics !== false;
-      const items = [...collect().values()].filter((e) => !S().hidden[e.key] && !(skipBasics && BASICS.test(e.name))).map((e) => ({
-        key: e.key, name: e.name, text: textOf(e), aisle: aisleOf(e.name), done: !!S().done[e.key], from: [...e.from], cost: e.cost ?? null,
-      }));
+      const groups = new Map();
+      for (const e of collect().values()) {
+        if (S().hidden[e.key] || (skipBasics && BASICS.test(e.name))) continue;
+        const k = withLastWord(e.name, singularWord);
+        if (!groups.has(k)) groups.set(k, []);
+        groups.get(k).push(e);
+      }
+      const items = [...groups.values()].map((es) => {
+        const keys = es.map((e) => e.key);
+        return {
+          key: keys[0], keys, name: es[0].name, text: es.length > 1 ? joinedText(es) : textOf(es[0]), aisle: aisleOf(es[0].name),
+          done: keys.every((k) => S().done[k]), from: [...new Set(es.flatMap((e) => [...e.from]))],
+          cost: es.some((e) => e.cost != null) ? es.reduce((n, e) => n + (e.cost || 0), 0) : null,
+        };
+      });
       const by = {};
       for (const it of items) (by[it.aisle] ||= []).push(it);
       return AISLES.filter((a) => by[a]).map((a) => ({ aisle: a, items: by[a].sort((x, y) => x.name.localeCompare(y.name)) }));
@@ -178,8 +197,13 @@
       }
       touch();
     },
-    toggle(key) { if (S().done[key]) delete S().done[key]; else S().done[key] = 1; touch(); },
-    hide(key) { const snap = snapshot(); S().hidden[key] = 1; delete S().done[key]; touch(); return () => restore(snap); },
+    /** Tick or untick a line; a line made of several (one food, two units) moves as one. */
+    toggle(key) {
+      const keys = [].concat(key), on = !keys.every((k) => S().done[k]);
+      for (const k of keys) { if (on) S().done[k] = 1; else delete S().done[k]; }
+      touch();
+    },
+    hide(key) { const snap = snapshot(); for (const k of [].concat(key)) { S().hidden[k] = 1; delete S().done[k]; } touch(); return () => restore(snap); },
     clearDone() {
       const snap = snapshot();
       for (const key of Object.keys(S().done)) { S().hidden[key] = 1; }
@@ -188,6 +212,22 @@
       return () => restore(snap);
     },
     clearAll() { const snap = snapshot(); Object.assign(S(), { recipes: [], extra: [], done: {}, hidden: {} }); touch(); return () => restore(snap); },
+
+    /** What you ticked goes into "What can I make?" and off the list: the kitchen knows what you just bought. */
+    toKitchen() {
+      const ticked = this.sections().flatMap((s) => s.items).filter((i) => i.done);
+      if (!ticked.length) return null;
+      const snap = snapshot(), pantry = JSON.stringify(P.S.pantry);
+      const have = P.S.pantry.have;
+      let added = 0;
+      for (const it of ticked) {
+        const t = it.name.toLowerCase().slice(0, 30), one = withLastWord(t, singularWord);
+        if (t && !have.some((x) => withLastWord(x, singularWord) === one)) { have.push(t); added++; }
+        for (const k of it.keys) { S().hidden[k] = 1; delete S().done[k]; }
+      }
+      touch();
+      return { added, moved: ticked.length, undo: () => { Object.assign(P.S.pantry, JSON.parse(pantry)); restore(snap); } };
+    },
 
     text() {
       const out = ["Shopping list"];
@@ -199,9 +239,22 @@
     },
   };
 
+  /* ---------- shop mode: big rows, what's left first, the screen stays on ---------- */
+  let shopping = false, lock = null;
+  const wake = async (on) => {
+    try {
+      if (on && !lock && "wakeLock" in navigator && document.visibilityState === "visible") { lock = await navigator.wakeLock.request("screen"); lock.addEventListener("release", () => { lock = null; }); }
+      if (!on && lock) { await lock.release(); lock = null; }
+    } catch { lock = null; }                                            // no wake lock here (or battery saver): shop mode still works
+  };
+  document.addEventListener("visibilitychange", () => { if (shopping && P.route.mode === "shop") wake(true); });
+  P.on("route", () => { if (P.route.mode !== "shop" && shopping) { shopping = false; wake(false); } });
+
   /* ---------- the pane ---------- */
   P.panes.shop = (top, scroll, ctx) => {
     const secs = P.shop.sections();
+    if (shopping) for (const sec of secs) sec.items.sort((a, b) => a.done - b.done);      // what's left to find comes first
+    const setShopping = (on) => { shopping = on; wake(on); P.emit("shop"); };
     const all = secs.flatMap((s) => s.items);
     const open = all.filter((i) => !i.done).length;
     const done = all.length - open;
@@ -234,15 +287,26 @@
       const li = h("li", { class: "ing shop-item" + (it.done ? " done" : ""), role: "checkbox", tabindex: "0", "aria-checked": String(it.done), title: `From ${it.from.join(", ")}` },
         h("span", { class: "cb", html: P.icon("check") }), h("span", { class: "txt" }, it.text),
         it.cost != null ? h("span", { class: "ing-price" }, P.prices.amount(it.cost)) : null,
-        h("button", { class: "rm", type: "button", "aria-label": `Remove ${it.name}`, html: P.icon("x"), onClick: (e) => { e.stopPropagation(); undoToast(`Removed ${it.name}.`, P.shop.hide(it.key)); } }));
-      li.addEventListener("click", () => P.shop.toggle(it.key));
-      li.addEventListener("keydown", (e) => { if ((e.key === " " || e.key === "Enter") && e.target === li) { e.preventDefault(); P.shop.toggle(it.key); } });
+        h("button", { class: "rm", type: "button", "aria-label": `Remove ${it.name}`, html: P.icon("x"), onClick: (e) => { e.stopPropagation(); undoToast(`Removed ${it.name}.`, P.shop.hide(it.keys)); } }));
+      li.addEventListener("click", () => P.shop.toggle(it.keys));
+      li.addEventListener("keydown", (e) => { if ((e.key === " " || e.key === "Enter") && e.target === li) { e.preventDefault(); P.shop.toggle(it.keys); } });
       return li;
     };
 
-    scroll.replaceChildren(h("div", { class: "recipe shop" },
+    const intoKitchen = () => {
+      const res = P.shop.toKitchen();
+      if (!res) return;
+      P.toast(`${P.plural(res.moved, "item")} put away${res.added ? ` (${res.added} new in your kitchen)` : ""}.`, { ms: 5000, action: { label: "Undo", fn: res.undo } });
+    };
+    scroll.replaceChildren(h("div", { class: "recipe shop" + (shopping ? " shopping" : "") },
+      shopping && all.length ? h("div", { class: "shop-progress", role: "progressbar", "aria-valuemin": "0", "aria-valuemax": String(all.length), "aria-valuenow": String(done), "aria-label": "In the basket" },
+        h("span", { class: "shop-track", "aria-hidden": "true" }, h("i", { style: { width: `${Math.round((done / all.length) * 100)}%` } })),
+        h("span", {}, open ? `${done} of ${all.length} in the basket` : "Everything's in the basket"),
+        done ? h("button", { class: "textbtn", type: "button", onClick: intoKitchen }, hi("jar"), "Put it in my kitchen") : null,
+        h("button", { class: "btn sm shopmode-btn on", type: "button", "aria-pressed": "true", onClick: () => setShopping(false) }, "Exit")) : null,
       h("h1", { class: "title" }, "Shopping list"),
       h("div", { class: "chips" },
+        open ? h("button", { class: "chip shopmode-btn", type: "button", "aria-pressed": "false", title: "Big rows, what's left first, and the screen stays on", onClick: () => setShopping(true) }, hi("cart"), "Shop mode") : null,
         h("span", { class: "chip" }, hi("cart"), all.length ? `${open} to buy` : "Nothing yet"),
         (() => {                                               // what the rest of the list costs, where you are
           const priced = all.filter((i) => !i.done && i.cost != null);
@@ -268,6 +332,7 @@
           h("div", { class: "sec-head" }, h("h2", { class: "section-h" }, sec.aisle), h("span", { class: "count-note" }, String(sec.items.filter((i) => !i.done).length))),
           h("ul", { class: "ings" }, sec.items.map(row)))),
         h("div", { class: "shop-foot" },
+          done ? h("button", { class: "btn lime sm", type: "button", title: "Add what you bought to What can I make?, and take it off the list", onClick: intoKitchen }, hi("jar"), `Put ${done} ticked in my kitchen`) : null,
           done ? h("button", { class: "btn ghost sm", type: "button", onClick: () => undoToast("Cleared what you ticked.", P.shop.clearDone()) }, `Clear ${done} ticked`) : null,
           h("button", { class: "btn danger-ghost sm", type: "button", onClick: () => undoToast("Cleared the list.", P.shop.clearAll()) }, hi("trash"), "Clear the list"))]
         : h("div", { class: "blank inline" }, hi("basket"), h("p", {}, "Your list is empty."),

@@ -1148,10 +1148,11 @@
     P.go(P.pathFor({ tag: P.route.tag }));
   }
 
+  // the list's count lives on the List buttons (quick bar, tab bar); a number on the folder read as "23 collections"
   function updateShopBadge() {
-    const n = P.shop.count(), btn = $("#btn-folder");
-    btn.classList.toggle("badged", n > 0);
-    if (n > 0) btn.dataset.badge = n > 99 ? "99+" : String(n); else delete btn.dataset.badge;
+    const btn = $("#btn-folder");
+    btn.classList.remove("badged");
+    delete btn.dataset.badge;
   }
 
   function onShop() {
@@ -1287,6 +1288,7 @@
     let nav = "detail";
     if (P.isNarrow()) nav = home ? "tags" : id || mode !== "view" ? "detail" : "list";
     els.app.dataset.nav = nav;
+    if (P.PANES.includes(mode)) els.app.dataset.pane = mode; else delete els.app.dataset.pane;
     const label = els.backList.querySelector(".back-label");
     if (label) label.textContent = P.tagName(P.route.tag);
   }

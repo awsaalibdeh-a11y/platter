@@ -170,3 +170,39 @@ test("the converter crosses cups and grams by ingredient, and knows gas marks", 
   assert.equal(P.convert.oven(200, "C").fan, 180);
   assert.equal(P.convert.oven(200, "C").f, 390);
 });
+
+test("one food measured two ways is one line, ticked and removed as one", () => {
+  P.shop.clearAll();
+  P.shop.add({ id: "a", title: "A" }, 4, ["10 oz bean sprouts", "1 tsp minced garlic", "1 clove garlic"]);
+  P.shop.add({ id: "b", title: "B" }, 4, ["1 cup bean sprouts", "2 tbsp finely chopped fresh parsley"]);
+  const items = P.shop.sections().flatMap((s) => s.items);
+  const texts = items.map((i) => i.text);
+  assert.ok(texts.includes("10 oz + 1 cup bean sprouts"), texts.join(" | "));
+  assert.ok(texts.some((t) => /garlic/.test(t) && t.includes(" + ")), texts.join(" | "));
+  assert.ok(texts.includes("2 tbsp parsley"), texts.join(" | "));
+  const sprouts = items.find((i) => i.name === "bean sprouts");
+  P.shop.toggle(sprouts.keys);
+  assert.ok(P.shop.sections().flatMap((s) => s.items).find((i) => i.name === "bean sprouts").done);
+  P.shop.hide(sprouts.keys);
+  assert.ok(!P.shop.sections().flatMap((s) => s.items).some((i) => i.name === "bean sprouts"));
+  P.shop.clearAll();
+});
+
+test("what you ticked on the list goes into your kitchen, and can be undone", () => {
+  P.shop.clearAll();
+  const before = JSON.stringify(P.S.pantry);
+  P.S.pantry.have = ["rice"];
+  P.shop.add({ id: "a", title: "A" }, 4, ["10 oz bean sprouts", "1 cup rice", "2 carrots"]);
+  const items = P.shop.sections().flatMap((s) => s.items);
+  for (const name of ["bean sprouts", "rice"]) P.shop.toggle(items.find((i) => i.name === name).keys);
+  const res = P.shop.toKitchen();
+  assert.equal(res.moved, 2);
+  assert.equal(res.added, 1);                                   // rice was already there
+  assert.deepEqual([...P.S.pantry.have], ["rice", "bean sprouts"]);
+  assert.equal(P.shop.sections().flatMap((s) => s.items).map((i) => i.name).join(","), "carrots");
+  res.undo();
+  assert.deepEqual([...P.S.pantry.have], ["rice"]);
+  assert.equal(P.shop.sections().flatMap((s) => s.items).length, 3);
+  Object.assign(P.S.pantry, JSON.parse(before));
+  P.shop.clearAll();
+});

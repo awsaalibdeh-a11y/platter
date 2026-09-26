@@ -269,6 +269,7 @@
 
   /* ---------- the pane ---------- */
   let week = monday(new Date());                                   // which week the pane is showing
+  let showPast = false;                                            // this week's empty days that have gone by, folded away
 
   P.panes.plan = (top, scroll, ctx) => {
     const fresh = !scroll.querySelector(".recipe.plan");          // opening the pane, not redrawing it after a tap
@@ -277,7 +278,11 @@
     const planned = dates.flatMap((d) => P.plan.on(key(d)));
     const range = `${short(dates[0])} – ${short(dates[6])}`;
     const isThisWeek = key(week) === key(monday(new Date()));
-    const go = (n) => { week = addDays(week, n * 7); P.emit("plan"); };
+    const go = (n) => { week = addDays(week, n * 7); showPast = false; P.emit("plan"); };
+    // on a Friday, four empty days that have gone by would push today off the screen: fold them into one row
+    const pastEmpty = isThisWeek ? dates.filter((d) => key(d) < today && !P.plan.on(key(d)).length) : [];
+    const fold = pastEmpty.length >= 2 && !showPast;
+    const wd = (d) => d.toLocaleDateString(undefined, { weekday: "short" });
 
     const open = (r) => P.go(P.pathFor({ tag: r.tag, id: r.id }));
 
@@ -336,7 +341,10 @@
         })(),
         h("button", { class: "btn lime sm auto-btn", type: "button", onClick: () => autoPlan(dates) }, hi("sparkle"), "Plan it for me")),
       weekSummary(dates, planned),
-      h("div", { class: "plan-days" }, dates.map(dayEl)),
+      h("div", { class: "plan-days" },
+        fold ? h("button", { class: "plan-past", type: "button", onClick: () => { showPast = true; P.emit("plan"); } },
+          hi("calendar"), h("span", {}, h("b", {}, `${wd(pastEmpty[0])} – ${wd(pastEmpty[pastEmpty.length - 1])}`), " · nothing was planned"), h("em", {}, "Show")) : null,
+        (fold ? dates.filter((d) => !pastEmpty.includes(d)) : dates).map(dayEl)),
       h("div", { class: "plan-foot" },
         h("button", { class: "btn lime", type: "button", disabled: !planned.length, onClick: addWeek }, hi("cart"), "Add this week to my shopping list"),
         planned.length ? h("button", { class: "btn ghost sm", type: "button", onClick: () => calendar(dates), title: "Download the week as a calendar file (.ics)" }, hi("calendar"), "Add to my calendar") : null,

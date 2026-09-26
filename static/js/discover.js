@@ -133,7 +133,7 @@
         tip("camera", "Snap your fridge", "See what you can make with what you've got", () => P.go("pantry")),
         tip("leaf", "Set your diet", "Low fat, no milk, vegetarian… everything follows it", () => P.diet.sheet()),
         tip("calendar", "Plan your week", "Dinners picked for you, one tap to a shopping list", () => P.go("plan")),
-        tip("search", "Search everything", "Recipes, tags and actions: press Ctrl K", () => P.palette.open())));
+        tip("search", "Search everything", matchMedia("(pointer: coarse)").matches ? "Recipes, tags and actions, all in one box" : "Recipes, tags and actions: press Ctrl K", () => P.palette.open())));
     return card;
   }
 

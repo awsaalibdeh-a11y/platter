@@ -58,6 +58,7 @@ EXTRA = """
 :root[data-theme="dark"] .ing.done .cb, :root[data-theme="dark"] .plan-item.done .pi-check { color: var(--lime-ink); }
 :root[data-theme="dark"] .dcard-fav { background: rgba(28, 28, 25, 0.9); }
 :root[data-theme="dark"] img { color-scheme: light; }
+:root[data-theme="dark"] .fridge-btn { background: #2b3514; color: #eef5d8; }
 """
 
 
