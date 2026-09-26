@@ -76,6 +76,10 @@ like an iPad app, in a browser.
   survive a reload
 - **Discover** also has "Picked for you" (from your favourites, ratings and what you cook) and "In season now" (by month
   and hemisphere)
+- **Shop mode** on the shopping list: big rows, what's left to find first, a progress bar, and the screen stays on;
+  then **put what you ticked in your kitchen**, so What can I make? knows what you just bought. One food measured two
+  ways (by weight in one recipe, by the cup in another) is one line: "10 oz + 1 cup bean sprouts"
+- **Made with AI** on the Ask AI page: the recipes AI wrote for you, easy to find again
 - **Safe by default**: a strict Content-Security-Policy with a per-response nonce, no framing, HSTS, and camera,
   microphone and location allowed only for Platter itself; assets go out brotli-compressed
 - 1,103 sample recipes with photos, so it is full from the first open. **Chicken** is the biggest meat tag: 177 dishes from a dozen cuisines
