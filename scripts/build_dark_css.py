@@ -40,13 +40,14 @@ EXTRA = """
 :root[data-theme="dark"] {
   color-scheme: dark;
   --bg-detail: #151513; --bg-list: #1a1a17; --bg-side: #1f1f1b; --field: #262621; --chip: #2a2a25; --line: #2e2d28;
-  --ink: #ecebe5; --ink-2: #cfcec7; --muted: #9a998f; --faint: #6c6b64;
+  --ink: #ecebe5; --ink-2: #cfcec7; --muted: #aeada3; --faint: #6c6b64; --danger: #f07a6e;
   --lime-soft: #2b3514;
   --pop: 0 16px 44px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 :root[data-theme="dark"] .row.on { background: #34421a; }
 :root[data-theme="dark"] .row.on .row-title { color: #f2f5e6; }
-:root[data-theme="dark"] .row.on .row-dom { color: rgba(236, 235, 229, 0.6); }
+:root[data-theme="dark"] .row.on .row-dom { color: rgba(236, 235, 229, 0.74); }
+:root[data-theme="dark"] .row.on .row-price { color: #e3f0b8; }
 :root[data-theme="dark"] .tile.on { box-shadow: inset 0 0 0 2.5px var(--lime), 0 0 0 1.5px var(--lime); }
 :root[data-theme="dark"] .qbtn.on .qn { background: #151513; color: var(--lime); }
 :root[data-theme="dark"] .tile-label { background: rgba(28, 28, 25, 0.92); color: var(--ink); }

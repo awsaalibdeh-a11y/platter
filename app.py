@@ -12,6 +12,7 @@ import json
 import mimetypes
 import os
 import re
+import secrets
 import socket
 import time
 from urllib.parse import urljoin, urlparse
@@ -21,6 +22,11 @@ from dotenv import load_dotenv
 from flask import Flask, Response, abort, jsonify, render_template, request
 from urllib3.util import connection as urllib3_connection
 from werkzeug.utils import safe_join
+
+try:
+    import brotli                  # ~25% smaller than gzip on the recipe library; gzip stays as the fallback
+except ImportError:                # pragma: no cover
+    brotli = None
 
 load_dotenv()          # local development only; on Render the variables come from the dashboard
 
@@ -40,10 +46,11 @@ from prices import bp as prices_bp  # noqa: E402
 
 app.register_blueprint(prices_bp)
 
-# ---------- assets: gzipped once, kept in memory ----------
+# ---------- assets: compressed once, kept in memory ----------
 # Flask's own static route streams files, which compression middleware leaves alone — so the
-# 1.2 MB recipe library would have gone out raw. Reading each asset once, gzipping the textual
-# ones, and answering from memory is a few lines and gets ~250 KB on the wire.
+# 1.9 MB recipe library would have gone out raw. Reading each asset once, compressing the textual
+# ones (brotli for browsers that take it, gzip for the rest), and answering from memory gets it
+# to ~430 KB on the wire.
 _assets = {}
 _TEXTUAL = ("text/", "application/json", "application/javascript", "image/svg+xml")
 
@@ -58,8 +65,10 @@ def _asset(path):
     mime = mimetypes.guess_type(path)[0] or "application/octet-stream"
     if path.endswith(".js"):
         mime = "text/javascript"
-    gz = gzip.compress(raw, 6) if len(raw) > 600 and mime.startswith(_TEXTUAL) else None
-    _assets[path] = hit = (mtime, raw, gz, mime)
+    packable = len(raw) > 600 and mime.startswith(_TEXTUAL)
+    gz = gzip.compress(raw, 6) if packable else None
+    br = brotli.compress(raw, quality=9) if packable and brotli else None      # 11 is 40x slower for 9% less
+    _assets[path] = hit = (mtime, raw, gz, br, mime)
     return hit
 
 
@@ -68,15 +77,16 @@ def static_files(filename):
     path = safe_join(STATIC, filename)
     if not path or not os.path.isfile(path):
         abort(404)
-    mtime, raw, gz, mime = _asset(path)
+    mtime, raw, gz, br, mime = _asset(path)
     etag = f'"{int(mtime)}-{len(raw)}"'
     if request.headers.get("If-None-Match") == etag:
         resp = Response(status=304)
     else:
-        use_gz = gz is not None and "gzip" in request.headers.get("Accept-Encoding", "")
-        resp = Response(gz if use_gz else raw, mimetype=mime)
-        if use_gz:
-            resp.headers["Content-Encoding"] = "gzip"
+        accepts = request.headers.get("Accept-Encoding", "")
+        body, coding = (br, "br") if br and "br" in accepts else (gz, "gzip") if gz and "gzip" in accepts else (raw, None)
+        resp = Response(body, mimetype=mime)
+        if coding:
+            resp.headers["Content-Encoding"] = coding
     resp.headers["ETag"] = etag
     resp.headers["Vary"] = "Accept-Encoding"
     return resp
@@ -98,13 +108,44 @@ def headers(resp):
         resp.headers["Cache-Control"] = "public, max-age=86400"
     elif request.path == "/":
         resp.headers["Cache-Control"] = "no-cache"
-    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    h = resp.headers
+    h.setdefault("X-Content-Type-Options", "nosniff")
+    h.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
+    h.setdefault("X-Frame-Options", "DENY")                        # no other site can put Platter in a frame
+    h.setdefault("Cross-Origin-Opener-Policy", "same-origin")
+    # the fridge photo needs the camera, step-by-step's voice commands the microphone, the price finder the location
+    h.setdefault("Permissions-Policy", "camera=(self), microphone=(self), geolocation=(self), payment=(), usb=(), interest-cohort=()")
+    if request.headers.get("X-Forwarded-Proto", request.scheme) == "https":
+        h.setdefault("Strict-Transport-Security", "max-age=31536000")
     return resp
+
+
+def _csp(nonce):
+    """What the page may load. Recipe photos come from anywhere a recipe was imported from, so images stay open;
+    scripts are Platter's own plus the one inline boot script, which carries this response's nonce."""
+    return "; ".join([
+        "default-src 'self'",
+        f"script-src 'self' 'nonce-{nonce}'",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+        "font-src 'self' https://fonts.gstatic.com",
+        "img-src 'self' data: blob: https:",
+        "connect-src 'self' https://api.bigdatacloud.net",
+        "media-src 'self' data: blob:",
+        "worker-src 'self'",
+        "manifest-src 'self'",
+        "object-src 'none'",
+        "base-uri 'none'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+    ])
 
 
 @app.route("/")
 def index():
-    return render_template("index.html", v=_asset_version())     # a handful of stat() calls: cheap
+    nonce = secrets.token_urlsafe(16)
+    resp = Response(render_template("index.html", v=_asset_version(), nonce=nonce), mimetype="text/html")   # a few stat() calls: cheap
+    resp.headers["Content-Security-Policy"] = _csp(nonce)
+    return resp
 
 
 @app.route("/version")

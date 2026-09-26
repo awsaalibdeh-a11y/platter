@@ -21,7 +21,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v={{ v }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='dark.css') }}?v={{ v }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='white.css') }}?v={{ v }}">
-  <script>
+  <script nonce="{{ nonce }}">
     window.PLATTER = { v: "{{ v }}" };
     // pick light or dark before the first paint, so a dark-mode visitor never sees a white flash
     try {

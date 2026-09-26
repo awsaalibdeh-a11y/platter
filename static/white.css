@@ -2,7 +2,7 @@
 :root[data-theme="white"] body { background: var(--bg-detail); color: var(--ink); }
 :root[data-theme="white"] :focus-visible { outline: 2px solid #7ea11a; }
 :root[data-theme="white"] .rows, :root[data-theme="white"] .detail-scroll, :root[data-theme="white"] .popover, :root[data-theme="white"] .sheet { scrollbar-color: #cdcdd1 transparent; }
-:root[data-theme="white"] .back { color: #5c7f0c; }
+:root[data-theme="white"] .back { color: #557509; }
 :root[data-theme="white"] .ibtn { color: var(--ink-2); }
 :root[data-theme="white"] .ibtn:hover { background: rgba(0, 0, 0, 0.05); }
 :root[data-theme="white"] .ibtn.sm { color: #7b7c88; }
@@ -35,7 +35,7 @@
 :root[data-theme="white"] .row-play { background: rgba(255, 255, 255, 0.93); color: #101112; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); }
 :root[data-theme="white"] .row-title { color: var(--ink); }
 :root[data-theme="white"] .row-dom { color: var(--muted); }
-:root[data-theme="white"] .row.on .row-dom { color: rgba(0, 0, 0, 0.6); }
+:root[data-theme="white"] .row.on .row-dom { color: rgba(0, 0, 0, 0.74); }
 :root[data-theme="white"] .row-fav { color: var(--star); }
 :root[data-theme="white"] .empty { color: var(--muted); }
 :root[data-theme="white"] .detail { background: var(--bg-detail); box-shadow: -1px 0 0 var(--line); }
@@ -75,7 +75,8 @@
 :root[data-theme="white"] .notes { background: var(--field); box-shadow: inset 0 0 0 1px #dddee1; }
 :root[data-theme="white"] .notes:focus { background: #ffffff; box-shadow: inset 0 0 0 2px var(--lime-2); }
 :root[data-theme="white"] .notes::placeholder { color: #aaaab2; }
-:root[data-theme="white"] .blank { color: #ababb3; }
+:root[data-theme="white"] .blank { color: var(--muted); }
+:root[data-theme="white"] .blank > .ic, :root[data-theme="white"] .blank > [data-icon] .ic { color: var(--faint); }
 :root[data-theme="white"] .detail.cook .step.current { background: var(--lime-soft); }
 :root[data-theme="white"] .timer { background: #1a1a1b; color: #ffffff; box-shadow: 0 8px 26px rgba(0, 0, 0, 0.32); }
 :root[data-theme="white"] .t-ic .ic { color: var(--lime); }
@@ -139,14 +140,14 @@
 :root[data-theme="white"] .aibtn { background: var(--lime); color: var(--lime-ink); }
 :root[data-theme="white"] .aibtn:hover { background: #bfe05f; }
 :root[data-theme="white"] .cbtn.badged::after { background: var(--lime); color: var(--lime-ink); box-shadow: 0 0 0 2px var(--bg-side); }
-:root[data-theme="white"] .textbtn { color: #5c7f0c; }
+:root[data-theme="white"] .textbtn { color: #557509; }
 :root[data-theme="white"] .shopbtn.in { background: var(--lime-soft); box-shadow: inset 0 0 0 1.5px var(--lime); color: #33430a; }
 :root[data-theme="white"] .shopnote { color: var(--muted); }
 :root[data-theme="white"] .rchip { background: var(--lime-soft); color: #33430a; }
 :root[data-theme="white"] .count-note { color: var(--muted); }
 :root[data-theme="white"] .shop-item .rm { color: #999aa3; }
 :root[data-theme="white"] .shop-item .rm:hover { background: rgba(0, 0, 0, 0.06); }
-:root[data-theme="white"] .blank .sub { color: #9e9fa8; }
+:root[data-theme="white"] .blank .sub { color: var(--muted); }
 :root[data-theme="white"] .lead { color: #57585d; }
 :root[data-theme="white"] .ai-chip { background: var(--chip); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.05); color: #505054; }
 :root[data-theme="white"] .ai-chip:hover:not(:disabled) { background: var(--lime-soft); color: #33430a; }
@@ -186,7 +187,7 @@
 :root[data-theme="white"] .pi-serves { color: var(--muted); }
 :root[data-theme="white"] .pi-serves button, :root[data-theme="white"] .pi-x { color: #67686e; }
 :root[data-theme="white"] .pi-serves button:hover:not(:disabled), :root[data-theme="white"] .pi-x:hover { background: rgba(0, 0, 0, 0.06); }
-:root[data-theme="white"] .plan-add { box-shadow: inset 0 0 0 1.5px #d3d4d8; color: #67686e; }
+:root[data-theme="white"] .plan-add { box-shadow: inset 0 0 0 1.5px #d3d4d8; color: var(--muted); }
 :root[data-theme="white"] .plan-add:hover { background: var(--lime-soft); box-shadow: inset 0 0 0 1.5px var(--lime); color: #33430a; }
 :root[data-theme="white"] .pick:hover, :root[data-theme="white"] .pick:focus-visible { background: #f7f7f8; }
 :root[data-theme="white"] .pick-thumb { background: linear-gradient(145deg, #f0f0f1, #d3d3d7); }
@@ -201,9 +202,9 @@
 :root[data-theme="white"] .meter { background: #f0f0f2; }
 :root[data-theme="white"] .meter i { background: var(--lime-2); }
 :root[data-theme="white"] .pcard-have { color: #33430a; }
-:root[data-theme="white"] .pcard-have em { color: #5c7f0c; }
+:root[data-theme="white"] .pcard-have em { color: #557509; }
 :root[data-theme="white"] .pcard-miss { color: #707076; }
-:root[data-theme="white"] .pcard-miss.ok { color: #5c7f0c; }
+:root[data-theme="white"] .pcard-miss.ok { color: #557509; }
 :root[data-theme="white"] .pcard-act { background: var(--lime); color: var(--lime-ink); }
 :root[data-theme="white"] .pcard-act:hover { background: #bfe05f; }
 :root[data-theme="white"] .pcard-act.on { background: var(--lime-soft); box-shadow: inset 0 0 0 1.5px var(--lime); color: #33430a; }
@@ -228,10 +229,10 @@
 :root[data-theme="white"] button.chip.diet.spicy:hover { background: #f8d2c6; }
 :root[data-theme="white"] .steps-hint { color: var(--muted); }
 :root[data-theme="white"] .steps-hint .ic { color: #7ea11a; }
-:root[data-theme="white"] .steps-hint b { color: #5c7f0c; }
+:root[data-theme="white"] .steps-hint b { color: #557509; }
 :root[data-theme="white"] .step-tools .timer-chip { background: var(--lime-soft); color: #33430a; }
 :root[data-theme="white"] .detail.cook .step-tools .timer-chip { background: var(--lime); color: var(--lime-ink); }
-:root[data-theme="white"] .explain { box-shadow: inset 0 0 0 1px #d3d4d8; color: #5c7f0c; }
+:root[data-theme="white"] .explain { box-shadow: inset 0 0 0 1px #d3d4d8; color: #557509; }
 :root[data-theme="white"] .explain:hover { background: var(--lime-soft); box-shadow: inset 0 0 0 1px var(--lime); }
 :root[data-theme="white"] .serve { background: #ffffff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.07); color: #48484c; }
 :root[data-theme="white"] .serve .ic { color: #7ea11a; }
@@ -285,7 +286,7 @@
 :root[data-theme="white"] .dsearch .ic-wrap { color: #a7a7af; }
 :root[data-theme="white"] .dhero { background: #ffffff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.07), 0 18px 40px -26px rgba(0, 0, 0, 0.5); }
 :root[data-theme="white"] .dhero-img { background: linear-gradient(145deg, #f0f0f1, #d3d3d7); }
-:root[data-theme="white"] .eyebrow { color: #5c7f0c; }
+:root[data-theme="white"] .eyebrow { color: #557509; }
 :root[data-theme="white"] .dhero p { color: #57585d; }
 :root[data-theme="white"] .dhero-meta { color: #66666c; }
 :root[data-theme="white"] .dhero-meta .ic { color: #7ea11a; }
@@ -300,7 +301,7 @@
 :root[data-theme="white"] .qchip:hover { background: var(--lime-soft); }
 :root[data-theme="white"] .qchip.on { background: var(--lime); color: var(--lime-ink); }
 :root[data-theme="white"] .fchip.fix { box-shadow: inset 0 0 0 1px #d3d4d8; color: var(--ink-2); }
-:root[data-theme="white"] .fchip.fix button { color: #5c7f0c; }
+:root[data-theme="white"] .fchip.fix button { color: #557509; }
 :root[data-theme="white"] .gsearch { background: #ffffff; color: var(--muted); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05), 0 1px 2px rgba(0, 0, 0, 0.04); }
 :root[data-theme="white"] .gsearch:hover { color: var(--ink-2); }
 :root[data-theme="white"] .pal-box { border-bottom: 1px solid #e9eaec; }
@@ -309,7 +310,7 @@
 :root[data-theme="white"] .pal-item { color: var(--ink); }
 :root[data-theme="white"] .pal-item.on { background: var(--lime-soft); }
 :root[data-theme="white"] .pal-thumb, :root[data-theme="white"] .pal-ic { background: linear-gradient(145deg, #f0f0f1, #d3d3d7); }
-:root[data-theme="white"] .pal-ic { background: var(--chip); color: #5c7f0c; }
+:root[data-theme="white"] .pal-ic { background: var(--chip); color: #557509; }
 :root[data-theme="white"] .pal-t small { color: var(--muted); }
 :root[data-theme="white"] .set-head p { color: var(--muted); }
 :root[data-theme="white"] .theme-card { background: #ffffff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.09); color: var(--ink); }
@@ -323,7 +324,7 @@
 :root[data-theme="white"] .choice.on .radio { box-shadow: inset 0 0 0 5px var(--lime-2); }
 :root[data-theme="white"] .set-row > .ic-wrap .ic { color: #7ea11a; }
 :root[data-theme="white"] .set-about { color: #57585d; }
-:root[data-theme="white"] .set-about a { color: #5c7f0c; }
+:root[data-theme="white"] .set-about a { color: #557509; }
 :root[data-theme="white"] .jump { background: var(--bg-detail); box-shadow: 0 1px 0 #e7e7ea; }
 :root[data-theme="white"] .jump button { background: var(--chip); color: var(--ink-2); }
 :root[data-theme="white"] .jump button:hover { background: var(--lime-soft); color: #33430a; }
@@ -379,7 +380,7 @@
 :root[data-theme="white"] .heat-key { color: var(--muted); }
 :root[data-theme="white"] .ktop-row { background: #ffffff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06); }
 :root[data-theme="white"] .ktop-row:hover { background: #fcfcfc; }
-:root[data-theme="white"] .ktop-row em { color: #5c7f0c; }
+:root[data-theme="white"] .ktop-row em { color: #557509; }
 :root[data-theme="white"] .ktop-n { color: var(--muted); }
 :root[data-theme="white"] .kbar i { background: #f0f0f2; }
 :root[data-theme="white"] .kbar em { background: var(--lime-2); }

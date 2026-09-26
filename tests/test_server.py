@@ -8,6 +8,7 @@ the US (which need no AI), the diet-label check, and the recipe library's integr
 import gzip
 import json
 import os
+import re
 import sys
 import unittest
 from unittest import mock
@@ -39,6 +40,32 @@ class Pages(unittest.TestCase):
         self.assertIn("recipes", json.loads(gzip.decompress(r.data)))
         again = self.c.get("/static/data/library.json", headers={"If-None-Match": r.headers["ETag"]})
         self.assertEqual(again.status_code, 304)
+
+    def test_library_prefers_brotli_when_the_browser_takes_it(self):
+        import brotli
+        r = self.c.get("/static/data/library.json", headers={"Accept-Encoding": "gzip, deflate, br"})
+        self.assertEqual(r.headers.get("Content-Encoding"), "br")
+        self.assertIn("recipes", json.loads(brotli.decompress(r.data)))
+        plain = self.c.get("/static/data/library.json", headers={"Accept-Encoding": "identity"})
+        self.assertIsNone(plain.headers.get("Content-Encoding"))
+        self.assertIn("recipes", json.loads(plain.data))
+
+    def test_page_has_a_strict_policy_and_its_one_inline_script_is_allowed(self):
+        r = self.c.get("/")
+        csp = r.headers.get("Content-Security-Policy", "")
+        self.assertIn("frame-ancestors 'none'", csp)
+        self.assertIn("object-src 'none'", csp)
+        self.assertNotIn("unsafe-eval", csp)
+        nonce = re.search(r"'nonce-([^']+)'", csp).group(1)
+        page = r.get_data(as_text=True)
+        inline = re.findall(r"<script(?![^>]*\bsrc=)([^>]*)>", page)
+        self.assertTrue(inline)
+        for attrs in inline:
+            self.assertIn(f'nonce="{nonce}"', attrs)
+        self.assertNotEqual(nonce, re.search(r"'nonce-([^']+)'", self.c.get("/").headers["Content-Security-Policy"]).group(1))
+        self.assertEqual(r.headers.get("X-Frame-Options"), "DENY")
+        self.assertIn("camera=(self)", r.headers.get("Permissions-Policy", ""))
+        self.assertIn("microphone=(self)", r.headers.get("Permissions-Policy", ""))
 
     def test_service_worker_is_never_cached_hard(self):
         r = self.c.get("/sw.js")
