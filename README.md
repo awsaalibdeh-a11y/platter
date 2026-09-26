@@ -60,6 +60,24 @@ like an iPad app, in a browser.
 - **US ⇄ metric** in one tap: cups, ounces and pounds become ml and g (and back), and oven temperatures in the directions convert too
 - **Search across tags**: the search box searches the tag you are in and offers "N more in All recipes"
 - **Works offline**: once loaded, the app and the library are kept on the device (a service worker), so it opens with no signal, and photos you have seen are remembered. It installs to the home screen
+- **Ingredient swaps**: out of buttermilk, or it isn't in your diet? The swap button on an ingredient lists what to
+  use instead and how much (milk + lemon, a flax egg, tamari…). Every swap is checked against your diet, the ones that
+  fit come first, lines that break your diet show the button without a hover, and a tap keeps the swap in the recipe's notes
+- **Kitchen converter** (`u`): cups, spoons, ml, grams, ounces and pounds, crossing volume and weight by ingredient (a cup
+  of flour is 125 g, a cup of sugar 200 g), and oven temperatures in °C, °F, fan and gas marks
+- **Use-by dates** in What can I make?: tap a food to say when it needs using; recipes that use it up come first, a
+  "Use soon" bar can ask AI for ideas, and Discover shows "Use it up before it goes off"
+- **The week at a glance** on the meal plan: calories and protein a day, the protein / carbs / fat split, meat-free
+  nights and what's cooked so far, with a tip for balancing the week
+- **Move a meal** to another day, and **add the week to your calendar** (an .ics file for any calendar app)
+- **Share a whole cookbook** as one link: sample recipes travel as ids, your own ones inside the link; whoever opens it
+  can save the cookbook
+- **Timers any time** (`w`): presets, a name, +1 minute, a progress bar, the countdown in the tab title, and they
+  survive a reload
+- **Discover** also has "Picked for you" (from your favourites, ratings and what you cook) and "In season now" (by month
+  and hemisphere)
+- **Safe by default**: a strict Content-Security-Policy with a per-response nonce, no framing, HSTS, and camera,
+  microphone and location allowed only for Platter itself; assets go out brotli-compressed
 - 1,103 sample recipes with photos, so it is full from the first open. **Chicken** is the biggest meat tag: 177 dishes from a dozen cuisines
 
 Everything a person changes is stored in their own browser (`localStorage`). The server ships the page,
@@ -96,8 +114,8 @@ article, a Wikimedia Commons search, Openverse, then TheMealDB. Each is checked 
 ## Tests
 
 ```bash
-python -m unittest discover tests     # the server: pages, assets, import guard, AI input checks, prices, library integrity
-node --test tests/logic.test.js       # the recipe logic: scaling, units, shopping list, diet rules, prices, tags
+python -m unittest discover tests     # the server: pages, assets, brotli, security headers, import guard, AI input checks, prices, library
+node --test tests/logic.test.js       # the recipe logic: scaling, units, shopping list, diet rules, prices, tags, swaps, the converter
 ```
 
 Neither spends anything: the AI endpoints are tested with no key, and the browser scripts run in a small stand-in
@@ -133,7 +151,7 @@ theme) by `scripts/build_dark_css.py`: run it after changing colours in `style.c
 ## Layout
 
 ```
-app.py                 Flask: page, cached/gzipped assets, /api/import (SSRF-guarded)
+app.py                 Flask: page (with its CSP nonce), security headers, cached brotli/gzip assets, /api/import (SSRF-guarded)
 prices.py              /api/prices: a grocery basket priced where you are, as a factor per kind of food
 ai.py                  /api/ai/ideas, /api/ai/recipe, /api/ai/remix, /api/ai/extract, /api/ai/fridge, /api/ai/translate, /api/ai/ask (OpenAI) and /api/ai/photo (free photo sources)
 templates/index.html   the three panes
@@ -141,10 +159,10 @@ static/style.css       every size measured from the reference, in rem
 static/js/util.js      icons, quantity parser and scaler
 static/js/store.js     library + personal state + hash router
 static/js/ui.js        popovers, dialogs, toasts, photo viewer
-static/js/cook.js      wake lock and timers
+static/js/cook.js      wake lock and timers (the corner pills, the new-timer sheet)
 static/js/shop.js      the shopping list: merging, aisles, its pane
-static/js/plan.js      the meal plan: days, servings, "add the week to the shopping list"
-static/js/pantry.js    "What can I make?": ranks recipes by what is in the kitchen
+static/js/plan.js      the meal plan: days, servings, the week at a glance, moving meals, calendar export
+static/js/pantry.js    "What can I make?": ranks recipes by what is in the kitchen, and use-by dates
 static/js/ai.js        the Ask AI pane
 static/js/gate.js      the "name the creator" door and its 30-minute timer
 static/js/aitools.js   Remix, reading a recipe in from a photo or text, and the fridge photo
@@ -152,8 +170,9 @@ static/js/settings.js  the Settings page
 static/js/palette.js   search everything (Ctrl K)
 static/js/prices.js    prices where you are: the guess, the settings sheet, costs in your money
 static/js/diet.js      your diet: the rules, checking a recipe against them, the settings sheet
+static/js/kitchen.js   ingredient swaps and the kitchen converter (no AI, works offline)
 static/js/books.js     cookbooks, and the Your kitchen page
-static/js/share.js     share links that carry the recipe, and the page they open
+static/js/share.js     share links that carry a recipe or a whole cookbook, and the pages they open
 static/js/help.js      the recipe helper: select-to-ask, Explain, the streaming chat panel
 static/js/steps.js     cook step by step
 static/js/discover.js  the Discover front page
@@ -170,4 +189,4 @@ static/js/views.js     tiles, list, recipe, editor
 static/js/main.js      start-up and keyboard shortcuts
 ```
 
-Keys: `/` search · `j`/`k` next/previous · `g` cook step by step · `h` recipe helper · `e` edit · `f` favourite · `c` Cook Mode · `n` new · `d` Discover · `a` Ask AI · `s` shopping list · `y` your kitchen · `p` what can I make · `m` meal plan · `r` random recipe · `t` light/dark · `[` sidebar · `?` all shortcuts.
+Keys: `/` search · `j`/`k` next/previous · `g` cook step by step · `h` recipe helper · `e` edit · `f` favourite · `c` Cook Mode · `n` new · `d` Discover · `a` Ask AI · `s` shopping list · `y` your kitchen · `p` what can I make · `m` meal plan · `r` random recipe · `w` new timer · `u` kitchen converter · `t` light/dark · `[` sidebar · `?` all shortcuts.
