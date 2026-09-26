@@ -89,6 +89,39 @@
     return { list: daily(best, "picked", 14), why: why.length ? `Because you like ${why.join(" and ")}` : "" };
   }
 
+  /* ---------- in season ---------- */
+  // where the seasons run the other way round: by the country prices use, or by the time zone
+  const SOUTH = new Set(["AU", "NZ", "AR", "CL", "UY", "PY", "ZA", "BR", "PE", "BO", "NA", "BW", "LS", "SZ", "MZ", "ZW", "ZM", "MG", "MU", "FJ"]);
+  const SEASONS = {
+    spring: ["asparagus|peas|pea|spinach|spring onions?|radish(?:es)?|rhubarb|new potato(?:es)?|artichokes?|watercress|broad beans?|fava beans?|lettuce|mint|morels?|lamb", "asparagus, peas, spinach and new potatoes"],
+    summer: ["tomato(?:es)?|courgettes?|zucchini|aubergines?|eggplants?|sweetcorn|corn on the cob|peach(?:es)?|strawberr(?:y|ies)|raspberr(?:y|ies)|blueberr(?:y|ies)|cherr(?:y|ies)|cucumbers?|bell peppers?|basil|watermelon|green beans?|apricots?", "tomatoes, courgettes, berries and sweetcorn"],
+    autumn: ["pumpkins?|squash|butternut|apples?|pears?|mushrooms?|sweet potato(?:es)?|parsnips?|beets?|beetroots?|cauliflower|kale|chestnuts?|cranberr(?:y|ies)|figs?|plums?|brussels sprouts?|celeriac", "pumpkin, squash, apples and mushrooms"],
+    winter: ["cabbages?|kale|leeks?|parsnips?|turnips?|swede|celeriac|oranges?|clementines?|satsumas?|blood oranges?|pomegranates?|brussels sprouts?|cauliflower|chestnuts?|red cabbage|lentils", "cabbage, leeks, citrus and root vegetables"],
+  };
+  const NOT_FRESH = /\b(?:vinegar|juice|sauce|stock|powder|extract|jam|jelly|ketchup|puree|paste|dried|canned|tinned)\b/;
+  function season(now = new Date()) {
+    const north = ["winter", "winter", "spring", "spring", "spring", "summer", "summer", "summer", "autumn", "autumn", "autumn", "winter"][now.getMonth()];
+    let tz = "";
+    try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ""; } catch { /* no time zone: assume north */ }
+    const cc = P.S.prices?.cc || "";
+    const south = cc ? SOUTH.has(cc) : /^(?:Australia|Pacific\/Auckland|America\/(?:Argentina|Santiago|Sao_Paulo|Montevideo|Asuncion|Lima|La_Paz)|Africa\/(?:Johannesburg|Maputo|Harare|Windhoek))/.test(tz);
+    return south ? { winter: "summer", summer: "winter", spring: "autumn", autumn: "spring" }[north] : north;
+  }
+  /** Recipes built on what's at its best right now: a seasonal name counts twice in the title. */
+  function inSeason(all) {
+    const key = season();
+    const re = new RegExp(`\\b(?:${SEASONS[key][0]})\\b`, "i");
+    const scored = [];
+    for (const r of all) {
+      if (!MAINS.has(r.tag) && r.tag !== "desserts" && r.tag !== "sides") continue;
+      let s = re.test(r.title) ? 2 : 0;
+      for (const n of P.ingredientNames(r)) if (re.test(n) && !NOT_FRESH.test(n)) s++;
+      if (s >= 2) scored.push([s + Math.random() * 0.01, r]);
+    }
+    const best = scored.sort((a, b) => b[0] - a[0]).slice(0, 60).map(([, r]) => r);
+    return { key, blurb: SEASONS[key][1], list: daily(best, `season-${key}`, 14) };
+  }
+
   /** The first time: four things worth trying, then out of the way for good. */
   function welcome() {
     if (P.S.ui.welcomed) return null;
@@ -154,7 +187,14 @@
           h("button", { class: "pi-main", type: "button", onClick: () => open(r) },
             h("span", { class: "pi-thumb" }, r.img ? h("img", { src: P.photo(r.img, "small"), alt: "" }) : null), h("span", { class: "pi-title" }, r.title)),
           h("button", { class: "btn lime sm", type: "button", onClick: () => P.stepper.open(r) }, hi("chefHat"), "Start cooking"))))) : null,
+      (() => {                                                         // food in the kitchen that is about to go off
+        const going = P.pantry?.soon() || [];
+        if (!going.length) return null;
+        const list = P.pantry.rank(going.map((x) => x.t)).filter((x) => x.urgent.length && x.r.img).slice(0, 14).map((x) => x.r);
+        return list.length ? row("Use it up before it goes off", list, () => P.go("pantry"), going.map((x) => `${x.t}: ${P.pantry.leftText(x.days)}`).join(" · ")) : null;
+      })(),
       (() => { const p = pickedForYou(all); return p ? row("Picked for you", p.list, null, p.why) : null; })(),
+      (() => { const s = inSeason(all); return s.list.length >= 4 ? row(`In season · ${s.key}`, s.list, null, `At their best right now: ${s.blurb}`) : null; })(),
       row("Quick weeknight dinners", quick, () => P.views.browse({ quick: true })),
       again.length ? row("Cook it again", again, () => P.go(P.pathFor({ tag: "made" }))) : null,
       favs.length ? row("Your favorites", favs, () => P.go(P.pathFor({ tag: "fav" }))) : null,

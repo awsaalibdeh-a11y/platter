@@ -25,7 +25,7 @@ function loadPlatter() {
   sandbox.window = sandbox;
   sandbox.window.PLATTER = { v: "test" };
   vm.createContext(sandbox);
-  for (const f of ["util", "store", "shop", "diet", "prices"]) {
+  for (const f of ["util", "store", "shop", "diet", "prices", "kitchen"]) {
     vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "static", "js", `${f}.js`), "utf8"), sandbox, { filename: `${f}.js` });
   }
   return sandbox.P;
@@ -122,4 +122,51 @@ test("typos in a search are fixed against the words the library really has", () 
   assert.equal(fix("chi"), "chi");                                // too short to guess at, and a prefix while typing
   assert.equal(fix("xqzvw"), "xqzvw");                            // nothing close: left alone
   assert.ok(P.search(P.recipes(), fix("chiken tika")).some((r) => /chicken tikka/i.test(r.title)));
+});
+
+test("swaps are found by the ingredient's name, not a word inside another", () => {
+  const name = (line) => P.swaps.find(line)?.name ?? null;
+  assert.equal(name("1 cup buttermilk"), "buttermilk");
+  assert.equal(name("2 cups whole milk"), "milk");
+  assert.equal(name("1 can coconut milk"), "coconut milk");
+  assert.equal(name("2 tbsp peanut butter"), "nut butter");
+  assert.equal(name("50g unsalted butter, softened"), "butter");
+  assert.equal(name("1 tbsp cornflour"), "cornstarch");
+  assert.equal(name("2 large eggs"), "egg");
+  assert.equal(name("1 eggplant, diced"), null);
+  assert.equal(name("200g sugar snap peas"), null);
+  assert.equal(name("1 tsp ground coriander"), null);
+  assert.equal(name("4 kaffir lime leaves"), null);
+  assert.equal(name("1 tbsp shrimp paste"), null);
+  assert.equal(name("300 ml double cream"), "cream");
+  assert.equal(name("1 scoop ice cream"), null);
+});
+
+test("swaps that fit your diet come first, and a line that breaks it says so", () => {
+  const before = P.S.diet.keys;
+  P.S.diet.keys = ["dairy-free"];
+  try {
+    const milk = P.swaps.options("1 cup milk");
+    assert.ok(milk.clash.includes("No milk or dairy"));
+    assert.equal(milk.opts[0].use, "Oat or soy milk");
+    assert.ok(milk.opts[0].fits);
+    assert.ok(!milk.opts.find((o) => o.use === "Skimmed milk").fits);
+    assert.ok(P.swaps.clashes("2 tbsp butter"));
+    assert.ok(P.swaps.clashes("3 cups queso fresco") || P.diet.problems({ ing: ["3 cups queso fresco"] }, ["dairy-free"]).length);
+    assert.ok(!P.swaps.clashes("2 tbsp olive oil"));
+  } finally { P.S.diet.keys = before; }
+});
+
+test("the converter crosses cups and grams by ingredient, and knows gas marks", () => {
+  const by = (list) => Object.fromEntries(list.map((x) => [x.unit, x.text]));
+  const flour = by(P.convert.amount(1, "cup", 125));
+  assert.equal(flour.g, "125");
+  assert.equal(flour.tbsp, "16");                                  // big spoon counts round to whole ones
+  assert.equal(by(P.convert.amount(100, "g", 200)).cup, "½");
+  assert.equal(by(P.convert.amount(1, "lb", 240)).g, "455");
+  const o = P.convert.oven(350, "F");
+  assert.equal(o.c, 175);
+  assert.equal(o.gas, "4");
+  assert.equal(P.convert.oven(200, "C").fan, 180);
+  assert.equal(P.convert.oven(200, "C").f, 390);
 });

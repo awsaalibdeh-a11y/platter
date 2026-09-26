@@ -246,7 +246,7 @@
   function shortcuts() {
     const keys = [["Ctrl K", "Search everything"], ["/", "Search this tag"], ["j  k", "Next / previous recipe"], ["g", "Cook step by step"], ["h", "Ask the recipe helper"], ["e", "Edit"], ["f", "Favorite"],
       ["c", "Cook Mode"], ["n", "New recipe"], ["d", "Discover"], ["a", "Ask AI what to cook"], ["p", "What can I make?"], ["m", "Meal plan"],
-      ["s", "Shopping list"], ["y", "Your kitchen"], ["r", "Surprise me"], ["w", "New timer"], ["t", "Light / dark"], ["[", "Hide the sidebar"], ["?", "This list"]];
+      ["s", "Shopping list"], ["y", "Your kitchen"], ["r", "Surprise me"], ["w", "New timer"], ["u", "Kitchen converter"], ["t", "Light / dark"], ["[", "Hide the sidebar"], ["?", "This list"]];
     P.sheet((close) => [
       h("h3", { class: "sheet-h" }, "Keyboard shortcuts"),
       h("div", { class: "keys" }, keys.map(([k, what]) => h("div", { class: "key-row" }, h("span", {}, k.split("  ").map((x) => h("kbd", {}, x))), h("span", {}, what)))),
@@ -611,6 +611,7 @@
         translated ? act("Show the original", "globe", () => { state.tr = null; renderDetail(); }) : act("Translate…", "globe", () => translateMenu(anchor, r), "Arabic, French, Spanish and more"),
         state.lastLang && !translated ? act(`Translate into ${langName(state.lastLang)}`, "globe", () => translate(r, state.lastLang)) : null,
         act("Scale to what I have…", "scale", () => scaleSheet(r)),
+        act("Kitchen converter", "cup", () => P.convert.sheet(), "Cups ⇄ grams, oven temperatures"),
         h("div", { class: "pop-sep" }),
         act("Print", "printer", () => window.print()),
         act("Copy as text", "copy", () => copyRecipe(r)),
@@ -683,7 +684,8 @@
           h("div", { class: "sec-head" }, h("h2", { class: "section-h" }, "Ingredients"),
             h("button", { class: "linkbtn", type: "button", onClick: () => { P.clearChecks(r.id); renderDetail(); } }, "Uncheck all")),
           h("div", { class: "ing-tools" }, scalerEl(r, servings), unitsEl(),
-            h("button", { class: "textbtn", type: "button", onClick: () => scaleSheet(r._orig || r) }, hi("scale"), "Scale to what I have")),
+            h("button", { class: "textbtn", type: "button", onClick: () => scaleSheet(r._orig || r) }, hi("scale"), "Scale to what I have"),
+            h("button", { class: "textbtn", type: "button", title: "Cups ⇄ grams, oven temperatures  ( U )", onClick: () => P.convert.sheet() }, hi("cup"), "Converter")),
           ingredientsEl(r, f), shopBarEl(r, f),
           nutritionEl(r)),
         h("section", { class: "col-steps" },
@@ -826,6 +828,7 @@
       const on = done.has(i);
       const li = h("li", { class: "ing" + (on ? " done" : ""), role: "checkbox", tabindex: "0", "aria-checked": String(on) },
         h("span", { class: "cb", html: icon("check") }), h("span", { class: "txt" }, P.scaleLine(line, f)),
+        swapBtn(r, line),
         prices ? h("span", { class: "ing-price", title: `${P.prices.place()} price for this amount (estimate)` }, P.prices.amount(P.prices.lineCost(r, i, f))) : null);
       const flip = () => {
         if (selecting(li)) return;                                                  // selecting words to ask about them is not a tap
@@ -840,6 +843,35 @@
       ul.append(li);
     });
     return ul;
+  }
+
+  /** Out of something, or it isn't in your diet: what to use instead. Lines that break your diet show it without a hover. */
+  function swapBtn(r, line) {
+    if (r._lang || !P.swaps.find(line)) return null;
+    const clash = P.swaps.clashes(line);
+    const b = h("button", {
+      class: "ing-swap" + (clash ? " clash" : ""), type: "button", html: icon("shuffle"),
+      title: clash ? "Not in your diet: see what to use instead" : "What can I use instead?",
+      "aria-label": `${clash ? "Not in your diet. " : ""}What can I use instead?`, "aria-haspopup": "menu",
+      onClick: (e) => {
+        e.stopPropagation();                                                        // not a tick on the ingredient
+        P.swaps.menu(b, line, {
+          onPick: (o, x) => keepSwap(r, o, x),
+          onAsk: (o) => P.help.open(r._orig || r, { q: `I can't use the ${o.name} in this recipe. What's the best swap here, and how much of it?`, focus: line }),
+        });
+      },
+    });
+    b.addEventListener("keydown", (e) => e.stopPropagation());
+    return b;
+  }
+  /** A chosen swap goes in the recipe's notes, so it's there next time. */
+  function keepSwap(r, o, x) {
+    const note = `Swap for ${o.name}: ${x.use}${x.how ? ` (${x.how})` : ""}`;
+    const before = P.notesOf(r.id);
+    const redo = () => els.scroll.querySelector(".notes-wrap")?.replaceWith(notesEl(r));
+    if (!before.includes(note)) P.setNotes(r.id, before ? `${before.trimEnd()}\n${note}` : note);
+    redo();
+    P.toast(`Kept in your notes: ${x.use}.`, { action: { label: "Undo", fn: () => { P.setNotes(r.id, before); redo(); } } });
   }
 
   const short = (s) => (s.length > 22 ? `${s.slice(0, 20).trimEnd()}…` : s);

@@ -50,10 +50,30 @@
   P.ingredientNames = (r) => new Set(prep(r).filter((l) => !l.staple && !l.optional).map((l) => l.name));
   const matches = (termWords, line) => termWords.every((w) => line.w.has(w)) && !(NOT_THE_THING.has(line.tail) && !termWords.includes(line.tail));
 
-  /** Every recipe that uses at least one of the terms, the ones that need the least shopping first. */
+  /* ---------- use-by dates ---------- */
+  // a date is kept as "YYYY-MM-DD" in local time, so "tomorrow" means tomorrow wherever you are
+  const dayKey = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const inDays = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return dayKey(d); };
+  const daysLeft = (k) => {
+    const [y, m, d] = String(k).split("-").map(Number);
+    const t = new Date(); t.setHours(0, 0, 0, 0);
+    return Math.round((new Date(y, m - 1, d) - t) / 864e5);
+  };
+  const leftText = (n) => (n < 0 ? "past its date" : n === 0 ? "use today" : n === 1 ? "use by tomorrow" : `${n} days left`);
+  const leftShort = (n) => (n < 0 ? "past date" : n === 0 ? "today" : n === 1 ? "tomorrow" : `${n} days`);
+  const SOON = 3;                                                          // days: what counts as "use it soon"
+  /** What in the kitchen needs using up in the next few days, soonest first: [{ t, days }]. */
+  function soon() {
+    const S = P.S.pantry, use = S.use || {};
+    return S.have.filter((t) => use[t]).map((t) => ({ t, days: daysLeft(use[t]) })).filter((x) => x.days <= SOON).sort((a, b) => a.days - b.days);
+  }
+
+  /** Every recipe that uses at least one of the terms: the ones that use up food about to go off first, then the
+      ones that need the least shopping. */
   function rank(terms, staples) {
     const tws = terms.map((t) => ({ t, w: words(t) })).filter((x) => x.w.length);
     if (!tws.length) return [];
+    const urgent = new Set(soon().map((x) => x.t));
     const coll = new Intl.Collator(undefined, { sensitivity: "base", numeric: true });
     const out = [];
     for (const r of P.diet.filter(P.recipes())) {
@@ -67,17 +87,20 @@
         else if (staples && l.staple) have++;
         else missing.push(l);
       }
-      if (hit.size) out.push({ r, have, total: lines.length, missing, all: hit.size === tws.length });
+      if (hit.size) out.push({ r, have, total: lines.length, missing, all: hit.size === tws.length, urgent: [...hit].filter((t) => urgent.has(t)) });
     }
-    return out.sort((a, b) => b.all - a.all || b.have / b.total - a.have / a.total || a.missing.length - b.missing.length || coll.compare(a.r.title, b.r.title));
+    return out.sort((a, b) => b.urgent.length - a.urgent.length || b.all - a.all || b.have / b.total - a.have / a.total || a.missing.length - b.missing.length || coll.compare(a.r.title, b.r.title));
   }
 
   /* ---------- the pane ---------- */
   let shown = 30;
   let fridge = null;                                                     // the last photo: { image, items, note }                                                        // how many results are on screen
 
+  P.pantry = { soon, rank: (terms) => rank(terms, P.S.pantry.staples), leftText };
+
   P.panes.pantry = (top, scroll, ctx) => {
     const S = P.S.pantry;
+    S.use ||= {};
     const live = {};
 
     top.replaceChildren(
@@ -92,7 +115,23 @@
       }
       if (n) { shown = 30; P.save(); paint(); }
     };
-    const drop = (t) => { S.have = S.have.filter((x) => x !== t); shown = 30; P.save(); paint(); };
+    const drop = (t) => { S.have = S.have.filter((x) => x !== t); delete S.use[t]; shown = 30; P.save(); paint(); };
+    const setUse = (t, k) => { if (k) S.use[t] = k; else delete S.use[t]; shown = 30; P.save(); paint(); };
+    /** When does it need using? A tap on a food in your kitchen. */
+    const whenMenu = (anchor, t) => P.popover(anchor, (close) => {
+      const cur = S.use[t] ? daysLeft(S.use[t]) : null;
+      const date = h("input", { class: "input sm", type: "date", value: S.use[t] || "", min: inDays(-30), "aria-label": `Use-by date for ${t}` });
+      date.addEventListener("change", () => { if (date.value) { close(); setUse(t, date.value); } });
+      return [
+        h("div", { class: "pop-h" }, `Use the ${t} by…`),
+        ...[[0, "Today"], [1, "Tomorrow"], [3, "In 3 days"], [5, "In 5 days"], [7, "In a week"]].map(([n, label]) =>
+          P.menuItem({ label, icon: "clock", on: cur === n, onClick: () => { close(); setUse(t, inDays(n)); } })),
+        h("div", { class: "pop-input" }, date),
+        cur != null ? P.menuItem({ label: "No date", icon: "x", onClick: () => { close(); setUse(t, null); } }) : null,
+        h("div", { class: "pop-sep" }),
+        P.menuItem({ label: `Remove ${t}`, icon: "trash", onClick: () => { close(); drop(t); } }),
+      ];
+    }, { align: "left" });
 
     const input = h("input", { class: "input", placeholder: "chicken, rice, lemon…", "aria-label": "Add an ingredient you have", enterkeyhint: "done", autocomplete: "off", autocapitalize: "off", spellcheck: "false" });
     const commit = () => { if (input.value.trim()) { add(input.value); input.value = ""; } };
@@ -120,6 +159,7 @@
           h("button", { class: "textbtn", type: "button", onClick: () => { fridge = null; paintFridge(); } }, "Hide"))))] : []));
     paintFridge();
     live.quick = h("div", { class: "ai-chips" });
+    live.soon = h("div", { class: "pan-soon-wrap" });
     live.head = h("div", { class: "pan-head" });
     live.list = h("div", { class: "pan-list" });
     live.more = h("div", { class: "ai-more" });
@@ -148,6 +188,7 @@
             h("span", { class: "meter", "aria-hidden": "true" }, h("i", { style: { width: `${Math.max(6, pct)}%` } })),
             h("span", { class: "pcard-have" }, `You have ${x.have} of ${x.total}`,
               x.all && S.have.length > 1 ? h("em", {}, " · uses everything you picked") : null),
+            x.urgent.length ? h("span", { class: "pcard-soon" }, hi("clock"), `Uses up your ${x.urgent.map((t) => `${t} (${leftShort(daysLeft(S.use[t]))})`).join(", ")}`) : null,
             names.length ? h("span", { class: "pcard-miss" }, `Missing: ${names.slice(0, 3).join(", ")}${names.length > 3 ? ` +${names.length - 3}` : ""}`) : h("span", { class: "pcard-miss ok" }, "You have everything"))),
         names.length
           ? (inList ? h("span", { class: "pcard-act on" }, hi("check"), "On your list")
@@ -160,9 +201,20 @@
     function paint() {
       const terms = S.have;
       put(live.have,
-        terms.map((t) => h("button", { class: "fchip", type: "button", "aria-label": `Remove ${t}`, onClick: () => drop(t) }, t, hi("x"))),
-        terms.length ? h("button", { class: "linkbtn show", type: "button", onClick: () => { S.have = []; P.save(); paint(); } }, "Clear all") : null);
+        terms.map((t) => {
+          const d = S.use[t] ? daysLeft(S.use[t]) : null;
+          return h("span", { class: "fchip pchip" + (d == null ? "" : d < 0 ? " past" : d <= 1 ? " urgent" : d <= SOON ? " soon" : " dated") },
+            h("button", { class: "pchip-main", type: "button", "aria-haspopup": "menu", title: "When does it need using?", "aria-label": `${t}${d == null ? "" : `, ${leftText(d)}`}. Set a use-by date`, onClick: (e) => whenMenu(e.currentTarget, t) },
+              t, d == null ? null : h("small", {}, leftShort(d))),
+            h("button", { class: "pchip-x", type: "button", "aria-label": `Remove ${t}`, html: P.icon("x"), onClick: () => drop(t) }));
+        }),
+        terms.length ? h("button", { class: "linkbtn show", type: "button", onClick: () => { S.have = []; S.use = {}; P.save(); paint(); } }, "Clear all") : null,
+        terms.length && !Object.keys(S.use).length ? h("span", { class: "pan-hint" }, "Tap a food to say when it needs using: recipes that use it up come first.") : null);
       live.have.hidden = !terms.length;
+      const going = soon();
+      put(live.soon, going.length ? h("div", { class: "pan-soon" }, hi("clock"),
+        h("span", {}, h("b", {}, "Use soon: "), going.map((x) => `${x.t} (${leftShort(x.days)})`).join(", ")),
+        h("button", { class: "textbtn", type: "button", onClick: () => P.views.openAI(`Something that uses up ${going.map((x) => x.t).join(", ")} before it goes off`) }, hi("sparkle"), "Ask AI to use them up")) : null);
       put(live.quick, COMMON.map((c) => {
         const on = terms.includes(c);
         return h("button", { class: "ai-chip" + (on ? " on" : ""), type: "button", "aria-pressed": String(on), onClick: () => (on ? drop(c) : add(c)) }, c);
@@ -194,7 +246,7 @@
         h("button", { class: "btn fridge-btn", type: "button", onClick: snap }, hi("camera"), "Snap your fridge"),
         h("span", {}, "Take a photo of your fridge or cupboard: AI spots the food in it and adds it here.")),
       live.fridge,
-      live.have, live.quick,
+      live.have, live.soon, live.quick,
       h("div", { class: "pan-staples" }, staples, h("span", {}, "I always have salt, pepper, oil, water, sugar, flour and butter")),
       live.head, live.list, live.more));
     paint();

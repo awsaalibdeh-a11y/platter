@@ -233,6 +233,40 @@
   }
   P.plan.calendar = calendar;
 
+  /* ---------- the week at a glance ---------- */
+  /** Calories and protein a day, the calorie split, meat-free nights and what's cooked: per person, AI estimates. */
+  function weekSummary(dates, planned) {
+    const recipes = planned.map((e) => P.recipe(e.id)).filter(Boolean);
+    if (!recipes.length) return null;
+    const days = dates.map((d) => P.plan.on(key(d)).map((e) => P.recipe(e.id)).filter((r) => r?.nut?.[0])).filter((rs) => rs.length);
+    const avg = (i) => (days.length ? Math.round(days.reduce((n, rs) => n + rs.reduce((m, r) => m + (r.nut[i] || 0), 0), 0) / days.length) : 0);
+    const [kcal, protein, carbs, fat] = [0, 1, 2, 3].map(avg);
+    const veg = recipes.filter((r) => (r.diet || []).includes("vegetarian")).length;
+    const cooked = planned.filter((e) => e.done).length;
+    const kinds = new Set(recipes.map((r) => r.sub || r.tag)).size;
+    const cal = { p: protein * 4, c: carbs * 4, f: fat * 9 };
+    const sum = cal.p + cal.c + cal.f || 1;
+    const pct = (k) => Math.round((cal[k] / sum) * 100);
+    const tip = !kcal ? ""
+      : pct("f") > 42 ? "A rich week: over 40% of the calories come from fat. A lighter dinner or two would even it out."
+      : recipes.length >= 4 && !veg ? "No meat-free nights yet. One or two would add variety (and save a little)."
+      : recipes.length >= 4 && kinds <= 2 ? "Lots of the same kind of food. Try mixing in another cuisine."
+      : protein < 22 ? "Light on protein. Beans, eggs, fish or chicken would help."
+      : "A nicely balanced week.";
+    const tile = (ic, value, label) => h("div", { class: "wk-tile" }, hi(ic), h("b", {}, value), h("small", {}, label));
+    return h("section", { class: "wk", "aria-label": "This week at a glance" },
+      h("div", { class: "wk-head" }, h("h2", {}, "The week at a glance"), h("small", {}, "Per person, from what's planned · AI estimates")),
+      h("div", { class: "wk-grid" },
+        tile("fire", kcal ? kcal.toLocaleString() : "—", "kcal a day"),
+        tile("bars", protein ? `${protein} g` : "—", "protein a day"),
+        tile("leaf", `${veg} of ${recipes.length}`, veg === 1 ? "meal is meat-free" : "meals meat-free"),
+        tile("check", `${cooked} of ${planned.length}`, "cooked so far")),
+      kcal ? h("div", { class: "wk-split", role: "img", "aria-label": `Calories: ${pct("p")}% protein, ${pct("c")}% carbs, ${pct("f")}% fat` },
+        ["p", "c", "f"].map((k) => h("i", { class: k, style: { width: `${pct(k)}%` } }))) : null,
+      kcal ? h("div", { class: "wk-legend", "aria-hidden": "true" }, h("span", { class: "p" }, `Protein ${pct("p")}%`), h("span", { class: "c" }, `Carbs ${pct("c")}%`), h("span", { class: "f" }, `Fat ${pct("f")}%`)) : null,
+      tip ? h("p", { class: "wk-tip" }, hi("sparkle"), tip) : null);
+  }
+
   /* ---------- the pane ---------- */
   let week = monday(new Date());                                   // which week the pane is showing
 
@@ -301,6 +335,7 @@
           return costs.length ? h("button", { class: "chip money", type: "button", title: `${P.prices.place()} prices, AI estimate`, onClick: () => P.prices.sheet() }, hi("coins"), `≈ ${P.prices.fmt(costs.reduce((a, b) => a + b, 0))}`) : null;
         })(),
         h("button", { class: "btn lime sm auto-btn", type: "button", onClick: () => autoPlan(dates) }, hi("sparkle"), "Plan it for me")),
+      weekSummary(dates, planned),
       h("div", { class: "plan-days" }, dates.map(dayEl)),
       h("div", { class: "plan-foot" },
         h("button", { class: "btn lime", type: "button", disabled: !planned.length, onClick: addWeek }, hi("cart"), "Add this week to my shopping list"),
