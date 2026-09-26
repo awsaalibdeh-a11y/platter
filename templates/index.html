@@ -23,10 +23,10 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='white.css') }}?v={{ v }}">
   <script nonce="{{ nonce }}">
     window.PLATTER = { v: "{{ v }}" };
-    // pick light or dark before the first paint, so a dark-mode visitor never sees a white flash
+    // pick the theme before the first paint, so nobody sees the wrong one flash
     try {
-      var t = (JSON.parse(localStorage.getItem("platter.v1") || "{}").ui || {}).theme || "auto";
-      if (t === "light") t = "white";
+      var ui = JSON.parse(localStorage.getItem("platter.v1") || "{}").ui || {}, t = ui.theme || "white";
+      if (t === "light" || (t === "auto" && ui.themeV !== 2)) t = "white";      // White is the default (see store.js)
       if (t === "auto") t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "white";
       document.documentElement.dataset.theme = t;
     } catch (e) { document.documentElement.dataset.theme = "white"; }
@@ -40,32 +40,40 @@
 <body>
   <div class="app" id="app" data-nav="detail" data-side="open">
 
-    <!-- 1 · tags -->
-    <aside class="side" id="side" aria-label="Tags">
+    <!-- 1 · the menu and the tags -->
+    <aside class="side" id="side" aria-label="Menu and tags">
       <div class="strip strip-side">
-        <button class="ibtn" id="btn-theme" type="button" aria-label="Switch light and dark" title="Light / dark  ( T )" data-icon="moon"></button>
         <button class="ibtn" id="btn-sidebar" type="button" aria-label="Hide sidebar" title="Hide sidebar  ( [ )" data-icon="sidebar"></button>
       </div>
       <div class="brand">
         <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24"><rect width="24" height="24" rx="6.4" fill="#d0e98a"/><rect x="6.2" y="5.2" width="3.4" height="14.2" rx="1.2" fill="#0e1800"/><circle cx="12.7" cy="10.4" r="4.2" fill="none" stroke="#0e1800" stroke-width="3.4"/></svg></span>
         <span class="wordmark">Platter</span>
-        <div class="brand-actions">
-          <button class="cbtn" id="btn-tags" type="button" aria-label="Edit tags" title="Edit tags" aria-pressed="false" data-icon="pencil"></button>
-          <button class="cbtn" id="btn-folder" type="button" aria-label="Collections" title="All recipes, favorites, recent" aria-haspopup="menu" data-icon="folder"></button>
-          <button class="cbtn" id="btn-people" type="button" aria-label="Settings" title="Settings: theme, units, diet, prices, backup" data-icon="gear"></button>
-          <button class="cbtn lime" id="btn-add" type="button" aria-label="Add a recipe" title="Add a recipe  ( N )" data-icon="plus"></button>
-        </div>
+        <button class="newbtn" id="btn-add" type="button" title="Add a recipe: import a link, snap a page, or write your own  ( N )"><span data-icon="plus"></span>Add recipe</button>
       </div>
       <button class="gsearch" id="btn-search" type="button" aria-label="Search recipes, tags and actions"><span data-icon="search"></span><span>Search everything</span><kbd id="gsearch-key">Ctrl K</kbd></button>
-      <nav class="quick" aria-label="Tools">
-        <button class="qbtn" type="button" data-go="discover" title="Discover  ( D )"><span data-icon="compass"></span>Discover</button>
-        <button class="qbtn" type="button" data-go="plan" title="Meal plan  ( M )"><span data-icon="calendar"></span>Plan<b class="qn" hidden></b></button>
-        <button class="qbtn" type="button" data-go="pantry" title="What can I make?  ( P )"><span data-icon="jar"></span>Pantry</button>
-        <button class="qbtn" type="button" data-go="shop" title="Shopping list  ( S )"><span data-icon="cart"></span>List<b class="qn" hidden></b></button>
-      </nav>
-      <div class="tiles" id="tiles" role="list">
-        <div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div>
-        <div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div>
+      <div class="side-scroll" id="side-scroll">
+        <nav class="menu" aria-label="Main">
+          <button class="mi" type="button" data-go="discover" data-tabbed title="Recipe of the day and ideas to browse  ( D )"><span class="mi-ic" data-icon="compass"></span><span class="mi-t">Discover</span></button>
+          <button class="mi" type="button" data-go="ai" title="Say what you feel like, get dishes to pick from  ( A )"><span class="mi-ic" data-icon="sparkle"></span><span class="mi-t">Ask AI</span></button>
+          <button class="mi" type="button" data-go="fav" title="The recipes you starred"><span class="mi-ic" data-icon="star"></span><span class="mi-t">Favorites</span></button>
+          <button class="mi" type="button" data-go="plan" data-tabbed title="Plan the week, shop for it in one tap  ( M )"><span class="mi-ic" data-icon="calendar"></span><span class="mi-t">Meal plan</span><b class="qn" hidden></b></button>
+          <button class="mi" type="button" data-go="shop" data-tabbed title="Everything you need, sorted by aisle  ( S )"><span class="mi-ic" data-icon="cart"></span><span class="mi-t">Shopping list</span><b class="qn" hidden></b></button>
+          <button class="mi" type="button" data-go="pantry" title="Rank recipes by what's in your kitchen  ( P )"><span class="mi-ic" data-icon="jar"></span><span class="mi-t">What can I make?</span></button>
+          <button class="mi" type="button" data-go="stats" title="What you've cooked, your streak, your favorites  ( Y )"><span class="mi-ic" data-icon="chefHat"></span><span class="mi-t">Your kitchen</span></button>
+          <button class="mi" type="button" id="btn-folder" aria-haspopup="menu" title="All recipes, recently viewed, top rated, your cookbooks"><span class="mi-ic" data-icon="folder"></span><span class="mi-t">Collections &amp; cookbooks</span><span class="mi-more" data-icon="chevronRight"></span></button>
+        </nav>
+        <div class="side-h">
+          <h2>Tags</h2>
+          <button class="textbtn" id="btn-tags" type="button" aria-pressed="false" title="Rename, re-cover, hide or add tags">Edit</button>
+        </div>
+        <div class="tiles" id="tiles" role="list">
+          <div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div>
+          <div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div><div class="tile sk"></div>
+        </div>
+      </div>
+      <div class="side-foot">
+        <button class="mi" type="button" id="btn-people" data-go="settings" title="Appearance, units, diet, prices, your data, help"><span class="mi-ic" data-icon="gear"></span><span class="mi-t">Settings</span></button>
+        <button class="ibtn themebtn" id="btn-theme" type="button" aria-label="Switch light and dark" title="Light / dark  ( T )" data-icon="moon"></button>
       </div>
     </aside>
 
@@ -80,7 +88,7 @@
           <h2 class="list-title" id="list-title">Recipes</h2>
           <p class="list-count" id="list-count" aria-live="polite">&nbsp;</p>
         </div>
-        <button class="ibtn sortbtn" id="sort-btn" type="button" aria-haspopup="menu" aria-label="Sort and filter" title="Sort and filter" data-icon="arrowUp"></button>
+        <button class="sortbtn" id="sort-btn" type="button" aria-haspopup="menu" title="Sort, and filter by diet, time, video…"><span data-icon="sliders"></span>Sort &amp; filter</button>
       </header>
       <div class="search-row">
         <div class="search">
@@ -88,7 +96,6 @@
           <input id="search" type="text" inputmode="search" placeholder="Search this tag" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Search this tag" enterkeyhint="search">
           <button class="search-clear" id="search-clear" type="button" hidden aria-label="Clear search" data-icon="x"></button>
         </div>
-        <button class="aibtn" id="btn-ai" type="button" aria-label="Ask AI what to cook" title="Ask AI what to cook  ( A )"><span data-icon="sparkle"></span>AI</button>
       </div>
       <div class="qfilters" id="qfilters" role="toolbar" aria-label="Quick filters"></div>
       <div class="filter-row" id="filter-row" hidden></div>
@@ -138,6 +145,7 @@
   <script defer src="{{ url_for('static', filename='js/share.js') }}?v={{ v }}"></script>
   <script defer src="{{ url_for('static', filename='js/steps.js') }}?v={{ v }}"></script>
   <script defer src="{{ url_for('static', filename='js/discover.js') }}?v={{ v }}"></script>
+  <script defer src="{{ url_for('static', filename='js/gallery.js') }}?v={{ v }}"></script>
   <script defer src="{{ url_for('static', filename='js/ai.js') }}?v={{ v }}"></script>
   <script defer src="{{ url_for('static', filename='js/views.js') }}?v={{ v }}"></script>
   <script defer src="{{ url_for('static', filename='js/main.js') }}?v={{ v }}"></script>

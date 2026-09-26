@@ -34,6 +34,9 @@ COLOR_PROPS = {"background", "background-color", "background-image", "color", "b
                "border-left", "border-right", "box-shadow", "outline", "outline-color", "text-decoration-color", "fill", "stroke",
                "scrollbar-color", "caret-color"}
 COLOR_RE = re.compile(r"#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b|rgba?\([^)]*\)")
+# glass buttons and labels that sit on a photo or on the always-dark photo viewer look the same in every theme:
+# mapping them would turn a white "x" on dark glass into a dark one
+SAME_IN_EVERY_THEME = re.compile(r"\.(?:lightbox|lb-|viewer|vw-|gal-arrow|gal-count|gal-add-chip|gal-own|burst)")
 
 EXTRA = """
 /* ---------- by hand ---------- */
@@ -94,6 +97,9 @@ def is_bright_accent(c):
     return a > 0.9 and s > 0.35 and 0.42 < l < 0.82
 
 
+NEUTRAL_H = 0.64          # the dark theme's greys lean a touch blue: calm charcoal, not the warm theme's olive-brown
+
+
 def dark(c, role):
     """Map one light-theme colour to its dark-theme partner, by the role it plays."""
     r, g, b, a = parse(c)
@@ -106,10 +112,10 @@ def dark(c, role):
             if role == "line" or (role == "bg" and a <= 0.12):
                 return fmt(255, 255, 255, min(a * 1.35, 0.22))
             if role == "fg":
-                return fmt(236, 235, 229, a)
+                return fmt(237, 237, 242, a)
             return c                                          # scrims and overlays on photos stay dark
         if l > 0.8 and neutral:
-            return fmt(30, 30, 26, a) if role == "bg" else fmt(20, 20, 18, a)
+            return fmt(26, 27, 32, a) if role == "bg" else fmt(18, 19, 23, a)
         if role == "shadow":
             return fmt(0, 0, 0, min(a * 1.8, 0.7))
         return c                                              # accent tints (danger wash, lime ring) read fine on dark
@@ -118,21 +124,21 @@ def dark(c, role):
     if neutral:
         if role == "bg":
             if l >= 0.995:
-                return from_hls(h, 0.14, min(s, 0.06), 1)      # a white card: a little lighter than the page
+                return from_hls(NEUTRAL_H, 0.132, 0.1, 1)      # a white card: a step lighter than the page, so it floats
             if l >= 0.5:
-                return from_hls(h, 0.078 + (0.985 - l) * 0.9, min(s, 0.08), 1)
-            return from_hls(h, 1 - l * 0.9, min(s, 0.1), 1)    # a dark pill (toast, timer) turns light
+                return from_hls(NEUTRAL_H, 0.078 + (0.985 - l) * 0.85, 0.1, 1)
+            return from_hls(NEUTRAL_H, 1 - l * 0.9, 0.06, 1)  # a dark pill (toast, timer) turns light
         if role == "fg":
-            return from_hls(h, 0.93 - l * 0.85, min(s, 0.1), 1)
+            return from_hls(NEUTRAL_H, 0.95 - l * 0.8, 0.08, 1)
         if role == "line":
-            return from_hls(h, min(0.4, 0.078 + (0.985 - l) * 1.3), min(s, 0.08), 1) if l >= 0.5 else c
+            return from_hls(NEUTRAL_H, min(0.4, 0.085 + (0.985 - l) * 1.25), 0.08, 1) if l >= 0.5 else c
     # accents
     if role == "bg":
-        return from_hls(h, 0.18, s * 0.45, 1) if l > 0.8 else c
+        return from_hls(h, 0.16, s * 0.3, 1) if l > 0.8 else c     # pale tints become quiet, low-saturation washes
     if role == "fg":
-        return from_hls(h, 0.72, min(s, 0.6), 1) if l < 0.55 else c
+        return from_hls(h, 0.74, min(s, 0.55), 1) if l < 0.55 else c
     if role == "line":
-        return from_hls(h, 0.3, s * 0.4, 1) if l > 0.8 else c
+        return from_hls(h, 0.28, s * 0.35, 1) if l > 0.8 else c
     return c
 
 
@@ -251,6 +257,8 @@ def build(name, fn, extra, path, root, fix_lime):
     for wrapper, selector, body in rules(css):
         if selector.startswith(":root") and "--" in body:
             continue                                          # the tokens are redefined by hand in EXTRA
+        if SAME_IN_EVERY_THEME.search(selector):
+            continue
         decls = []
         for d in split_top(body, ";"):
             if ":" not in d:

@@ -123,6 +123,62 @@ class AIWithoutAKey(unittest.TestCase):
         self.assertEqual(r.status_code, 400)
 
 
+class Gallery(unittest.TestCase):
+    """/api/photos: the recipe-page gallery. Needs no key (the sources are all free), so no key is set for these."""
+
+    def setUp(self):
+        self.c = app.test_client()
+
+    def test_title_is_required(self):
+        self.assertEqual(self.c.get("/api/photos").status_code, 400)
+
+    def test_no_photos_found_is_still_a_200(self):
+        with mock.patch.object(ai, "_get", return_value=None):        # every source comes back empty
+            r = self.c.get("/api/photos?title=Butter+Chicken")
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual(r.get_json(), {"photos": []})
+
+    def test_never_reaches_a_host_other_than_the_four_photo_sources(self):
+        seen = []
+
+        def fake_get(url, **params):
+            seen.append(url)
+            return None
+
+        with mock.patch.object(ai, "_get", side_effect=fake_get):
+            self.c.get("/api/photos?title=Pad+Thai&wiki=Pad+thai")
+        self.assertTrue(seen)
+        for url in seen:
+            self.assertTrue(url.startswith((
+                "https://en.wikipedia.org/", "https://commons.wikimedia.org/",
+                "https://api.openverse.org/", "https://www.themealdb.com/",
+            )), url)
+
+    def test_photos_are_deduplicated_and_never_repeat_the_cover(self):
+        cover = "https://upload.wikimedia.org/wikipedia/commons/a/aa/Pad_Thai_plate.jpg"
+        same_again = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Pad_Thai_plate.jpg/960px-Pad_Thai_plate.jpg"  # a resize of the cover
+        other = "https://upload.wikimedia.org/wikipedia/commons/b/bb/Pad_Thai_street_vendor.jpg"
+
+        def fake_get(url, **params):
+            if "commons.wikimedia.org" in url:
+                meta = {"Categories": {"value": "Thai noodle dishes"}}
+                return {"query": {"pages": [
+                    {"index": 0, "title": "File:Pad_Thai_plate.jpg",
+                     "imageinfo": [{"thumburl": same_again, "width": 960, "mime": "image/jpeg", "extmetadata": meta}]},
+                    {"index": 1, "title": "File:Pad_Thai_street_vendor.jpg",
+                     "imageinfo": [{"thumburl": other, "width": 960, "mime": "image/jpeg", "extmetadata": meta}]},
+                ]}}
+            return None                                            # Wikipedia, Openverse, TheMealDB: nothing
+
+        with mock.patch.object(ai, "_get", side_effect=fake_get):
+            found = ai.gallery("Pad Thai", "Pad thai", have=cover)
+        urls = [p["url"] for p in found]
+        self.assertNotIn(cover, urls)
+        self.assertNotIn(same_again, urls)          # a resize of the cover is still the cover
+        self.assertIn(other, urls)
+        self.assertEqual(len(urls), len(set(ai._photo_key(u) for u in urls)))     # no photo appears twice
+
+
 class Prices(unittest.TestCase):
     def test_us_prices_need_no_ai(self):
         r = app.test_client().post("/api/prices", json={"country": "US"})

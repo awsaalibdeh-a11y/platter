@@ -14,12 +14,12 @@
 
   /* ---------- persisted state ---------- */
   const blank = () => ({
-    fav: {}, user: {}, edits: {}, gone: {}, checks: {}, scale: {}, notes: {}, steps: {},
+    fav: {}, user: {}, edits: {}, gone: {}, checks: {}, scale: {}, notes: {}, steps: {}, photos: {},
     rate: {}, made: {}, plan: {}, pantry: { have: [], staples: true }, books: [], diet: { keys: [], on: true }, prices: { on: true, cc: "", name: "", city: "", cal: null },
     tags: { order: [], names: {}, covers: {}, hidden: {}, custom: [] },
     shop: { recipes: [], extra: [], done: {}, hidden: {}, basics: true },
     recent: [],
-    ui: { sidebar: true, sort: "az", last: null, units: "orig", theme: "auto", speak: false },
+    ui: { sidebar: true, sort: "az", last: null, units: "orig", theme: "white", speak: false },
   });
   const merge = (base, extra) => {
     for (const k of Object.keys(extra || {})) {
@@ -37,6 +37,10 @@
     return blank();
   })();
   Object.defineProperty(P, "S", { get: () => S });
+  // White is the default now. Before, a new visitor got "auto", which turned dark on a dark-mode device: move anyone
+  // still on that untouched default over to White, once. (Picking Auto again in Settings keeps it.)
+  const upgrade = (s) => { if (s.ui.themeV !== 2) { if (!s.ui.theme || s.ui.theme === "auto") s.ui.theme = "white"; s.ui.themeV = 2; } return s; };
+  upgrade(S);
 
   let timer = 0;
   const flush = () => {
@@ -44,6 +48,8 @@
     catch { P.toast?.("Your browser's storage is full — remove a photo or two."); }
   };
   P.save = () => { clearTimeout(timer); timer = setTimeout(flush, 150); };
+  /** Save right away and say whether the browser took it (a photo can be the one that fills its storage). */
+  P.saveNow = () => { clearTimeout(timer); try { localStorage.setItem(KEY, JSON.stringify(S)); return true; } catch { return false; } };
   addEventListener("pagehide", flush);
   document.addEventListener("visibilitychange", () => document.hidden && flush());
 
@@ -351,8 +357,8 @@
 
   /* ---------- light or dark ---------- */
   const mqDark = matchMedia("(prefers-color-scheme: dark)");
-  const COLORS = { white: "#ffffff", warm: "#fafaf8", dark: "#151513" };
-  P.theme = () => (S.ui.theme === "light" ? "white" : S.ui.theme || "auto");          // "light" was the old name
+  const COLORS = { white: "#ffffff", warm: "#fafaf8", dark: "#121317" };
+  P.theme = () => (S.ui.theme === "light" ? "white" : S.ui.theme || "white");         // "light" was the old name
   /** The theme actually showing: auto becomes white or dark, whichever the device prefers. */
   P.resolvedTheme = () => (P.theme() === "auto" ? (mqDark.matches ? "dark" : "white") : P.theme());
   P.applyTheme = () => {
@@ -406,9 +412,9 @@
     return id;
   };
   P.deleteRecipe = (id) => {
-    const snap = { user: S.user[id], edit: S.edits[id], gone: S.gone[id], fav: S.fav[id], recent: [...S.recent] };
+    const snap = { user: S.user[id], edit: S.edits[id], gone: S.gone[id], fav: S.fav[id], photos: S.photos[id], recent: [...S.recent] };
     if (S.user[id]) delete S.user[id]; else S.gone[id] = 1;
-    delete S.edits[id]; delete S.fav[id];
+    delete S.edits[id]; delete S.fav[id]; delete S.photos[id];            // your photos of it take real room: they go too
     S.recent = S.recent.filter((x) => x !== id);
     touch();
     return () => {                                    // undo
@@ -416,6 +422,7 @@
       if (snap.gone === undefined) delete S.gone[id]; else S.gone[id] = snap.gone;
       if (snap.edit) S.edits[id] = snap.edit;
       if (snap.fav) S.fav[id] = snap.fav;
+      if (snap.photos) S.photos[id] = snap.photos;
       S.recent = snap.recent;
       touch();
     };
@@ -431,7 +438,7 @@
   P.importData = (text) => {
     const o = JSON.parse(text);
     if (o.app !== "platter" || !o.data) throw new Error("That file isn't a Platter backup.");
-    S = merge(blank(), o.data);
+    S = upgrade(merge(blank(), o.data));
     flush();
     dirty = true;
     P.emit("data");

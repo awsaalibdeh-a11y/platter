@@ -95,6 +95,8 @@
     scale: '<path d="M6 20.2h12a1.8 1.8 0 0 0 1.8-2l-1-8.4A1.8 1.8 0 0 0 17 8.2H7a1.8 1.8 0 0 0-1.8 1.6l-1 8.4a1.8 1.8 0 0 0 1.8 2z"/><path d="M9 8.2V6.6a3 3 0 0 1 6 0v1.6M12 12.4l1.6 2.2"/>',
     keyboard: '<rect x="2.8" y="6" width="18.4" height="12" rx="2.4"/><path d="M6.5 9.6h.1M10 9.6h.1M13.5 9.6h.1M17 9.6h.1M6.5 12.8h.1M17 12.8h.1M9 15.2h6"/>',
     fire: '<path d="M12 3.2c.7 3.4 5.2 5.2 5.2 10.2a5.2 5.2 0 0 1-10.4 0c0-1.9.9-3.3 2-4.4.3 1.5 1.1 2.3 2 2.7C10.6 8.8 10.5 6 12 3.2z"/>',
+    sliders: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2.1"/><circle cx="9" cy="17" r="2.1"/>',
+    images: '<rect x="7" y="3.8" width="13.4" height="11.6" rx="2.2"/><path d="M4 8.4v9.4a2.4 2.4 0 0 0 2.4 2.4h9.4"/><circle cx="11.4" cy="8" r="1.3"/><path d="M7.4 13.8l3.1-2.8 2.4 2.1 2-1.8 5 4.4"/>',
   };
   P.icon = (name, cls = "") =>
     `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.85" stroke-linecap="round" stroke-linejoin="round">${ICONS[name] || ""}</svg>`;

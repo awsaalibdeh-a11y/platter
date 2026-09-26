@@ -35,10 +35,8 @@
     els.clear.addEventListener("click", () => { clearSearch(); els.search.focus(); });
     els.sortBtn.addEventListener("click", () => sortMenu(els.sortBtn));
     $("#btn-add").addEventListener("click", newRecipe);
-    $("#btn-ai").addEventListener("click", () => openAI());
     $("#btn-tags").addEventListener("click", toggleTileEditing);
     $("#btn-folder").addEventListener("click", (e) => collectionsMenu(e.currentTarget));
-    $("#btn-people").addEventListener("click", () => { if (P.isMedium()) { state.drawer = false; syncSide(); } P.go("settings"); });
     $("#btn-search").addEventListener("click", () => P.palette.open());
     for (const t of document.querySelectorAll(".tab[data-tab]")) {
       t.addEventListener("click", () => {
@@ -57,8 +55,13 @@
     syncThemeBtn();
     $("#btn-sidebar").addEventListener("click", toggleSidebar);
     $("#btn-sidebar-show").addEventListener("click", toggleSidebar);
-    for (const b of document.querySelectorAll(".qbtn[data-go]")) {
-      b.addEventListener("click", () => { if (P.isMedium()) { state.drawer = false; syncSide(); } P.go(b.dataset.go); });
+    // the menu: every place in Platter, with its name on it
+    for (const b of document.querySelectorAll(".mi[data-go]")) {
+      b.addEventListener("click", () => {
+        if (P.isMedium()) { state.drawer = false; syncSide(); }
+        const go = b.dataset.go;
+        P.go(go === "fav" ? P.pathFor({ tag: "fav" }) : go);
+      });
     }
     els.sideScrim.addEventListener("click", () => { state.drawer = false; syncSide(); });
     els.backTags.addEventListener("click", () => P.go(""));
@@ -88,7 +91,7 @@
     syncSide();
   }
 
-  function start() { renderTiles(); updateShopBadge(); onRoute(); }
+  function start() { renderTiles(); onRoute(); }
 
   function fail() {
     els.tiles.replaceChildren(h("div", { class: "load-fail" },
@@ -103,8 +106,10 @@
     if (state.editingTiles) frag.append(addTileEl());
     els.tiles.replaceChildren(frag);
     els.tiles.classList.toggle("editing", state.editingTiles);
-    $("#btn-tags").classList.toggle("on", state.editingTiles);
-    $("#btn-tags").setAttribute("aria-pressed", String(state.editingTiles));
+    const edit = $("#btn-tags");
+    edit.textContent = state.editingTiles ? "Done" : "Edit";
+    edit.classList.toggle("on", state.editingTiles);
+    edit.setAttribute("aria-pressed", String(state.editingTiles));
     syncTiles();
   }
 
@@ -126,7 +131,7 @@
 
   function syncTiles() {
     for (const t of els.tiles.querySelectorAll(".tile[data-tag]")) {
-      const on = t.dataset.tag === P.route.tag && !P.route.home || (P.route.home && !P.isNarrow() && t.dataset.tag === P.route.tag);
+      const on = t.dataset.tag === P.route.tag && ["view", "edit"].includes(P.route.mode) && (!P.route.home || !P.isNarrow());
       t.classList.toggle("on", on);
       if (on) t.setAttribute("aria-current", "true"); else t.removeAttribute("aria-current");
     }
@@ -209,30 +214,20 @@
   function collectionsMenu(anchor) {
     P.popover(anchor, (close) => {
       const go = (tag) => () => { close(); if (P.isMedium()) { state.drawer = false; syncSide(); } P.go(P.pathFor({ tag })); };
-      const favCount = Object.keys(P.S.fav).filter((id) => P.recipe(id)).length;
       const hidden = P.tags({ hidden: true }).filter((t) => P.S.tags.hidden[t.id]);
       const nav = (fn) => () => { close(); if (P.isMedium()) { state.drawer = false; syncSide(); } fn(); };
       const coll = (label, icon, id) => P.menuItem({ label, icon, count: P.inTag(id).length, on: P.route.tag === id && P.route.mode === "view", onClick: go(id) });
       return [
-        P.menuItem({ label: "Discover", sub: "Recipe of the day and ideas to browse", icon: "compass", on: P.route.mode === "discover", onClick: nav(openDiscover) }),
-        P.menuItem({ label: "Ask AI what to cook", icon: "sparkle", on: P.route.mode === "ai", onClick: nav(() => openAI()) }),
-        P.menuItem({ label: "What can I make?", sub: "Rank recipes by what's in your kitchen", icon: "jar", on: P.route.mode === "pantry", onClick: nav(openPantry) }),
-        P.menuItem({ label: "Meal plan", sub: "Plan the week, shop for it in one tap", icon: "calendar", count: P.plan.upcoming() || undefined, on: P.route.mode === "plan", onClick: nav(openPlan) }),
-        P.menuItem({ label: "Shopping list", icon: "cart", count: P.shop.count() || undefined, on: P.route.mode === "shop", onClick: nav(openShop) }),
-        h("div", { class: "pop-sep" }),
         h("div", { class: "pop-h" }, "Collections"),
-        P.menuItem({ label: "All recipes", icon: "book", count: P.recipes().length, on: P.route.tag === "all", onClick: go("all") }),
-        P.menuItem({ label: "Favorites", icon: "star", count: favCount, on: P.route.tag === "fav", onClick: go("fav") }),
-        P.menuItem({ label: "Recently viewed", icon: "clockArrow", count: P.S.recent.filter((i) => P.recipe(i)).length, on: P.route.tag === "recent", onClick: go("recent") }),
+        P.menuItem({ label: "All recipes", icon: "book", count: P.recipes().length, on: P.route.tag === "all" && P.route.mode === "view", onClick: go("all") }),
+        P.menuItem({ label: "Recently viewed", icon: "clockArrow", count: P.S.recent.filter((i) => P.recipe(i)).length, on: P.route.tag === "recent" && P.route.mode === "view", onClick: go("recent") }),
         coll("Top rated", "star", "top"),
         coll("Cooked before", "chefHat", "made"),
         coll("Under 30 minutes", "clock", "quick"),
         h("div", { class: "pop-sep" }),
-        h("div", { class: "pop-h" }, "Cookbooks"),
+        h("div", { class: "pop-h" }, "Your cookbooks"),
         ...P.books().map((b) => P.menuItem({ label: b.name, icon: "bookmark", count: P.inTag(b.id).length, on: P.route.tag === b.id, onClick: go(b.id) })),
         P.menuItem({ label: "New cookbook", sub: P.books().length ? null : "Your own lists: date night, party food…", icon: "plus", onClick: nav(() => P.cookbooks.create()) }),
-        h("div", { class: "pop-sep" }),
-        P.menuItem({ label: "Your kitchen", sub: "What you've cooked, your streak, your favorites", icon: "chefHat", on: P.route.mode === "stats", onClick: nav(() => P.go("stats")) }),
         h("div", { class: "pop-sep" }),
         P.menuItem({ label: "Surprise me", sub: "Open a random recipe", icon: "shuffle", onClick: nav(surprise) }),
         hidden.length ? [
@@ -448,7 +443,7 @@
 
   function onFav(id) {
     const on = P.isFav(id);
-    for (const b of els.scroll.querySelectorAll(".starbtn")) { b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); }
+    for (const b of els.scroll.querySelectorAll(".starbtn.fav")) { b.classList.toggle("on", on); b.setAttribute("aria-pressed", String(on)); b.classList.remove("pop"); void b.offsetWidth; if (on) b.classList.add("pop"); }
     els.rows.querySelector(`.row[data-id="${CSS.escape(id)}"]`)?.classList.toggle("fav", on);
     if (P.route.tag === "fav" || P.S.ui.sort === "fav" || state.filters.fav) renderList();
   }
@@ -478,13 +473,6 @@
     els.scroll.replaceChildren(h("div", { class: "blank" }, hi("plate"), h("p", {}, P.count(P.route.tag) || P.isSpecial(P.route.tag) ? "Pick a recipe from the list." : "Nothing here yet — add your first recipe with the + button.")));
   }
 
-  /** The bookmark: filled in when the recipe is in any cookbook. */
-  const bookBtn = (r) => {
-    const b = actBtn("bookmark", "Save to a cookbook", (e) => P.cookbooks.menu(e.currentTarget, r));
-    b.classList.toggle("on", P.booksOf(r.id).length > 0);
-    return b;
-  };
-
   function onBooks() {
     const { tag, mode, id } = P.route;
     if (P.isBook(tag) || (tag && tag.startsWith("bk"))) {
@@ -492,10 +480,7 @@
       renderList();
       els.title.textContent = P.tagName(tag);
     }
-    if (mode === "view" && id) { const r = P.recipe(id); if (r) els.top.querySelector(".a-bookmark")?.replaceWith(bookBtn(r)); }
   }
-
-  const actBtn = (name, label, fn) => h("button", { class: `abtn a-${name}`, type: "button", title: label, "aria-label": label, html: icon(name), onClick: fn });
 
   function syncThemeBtn() {
     const dark = P.resolvedTheme() === "dark", b = $("#btn-theme");
@@ -600,24 +585,33 @@
     }, { label: "Scale to what I have", class: "small" });
   }
 
-  /** Everything else you can do with a recipe, with words, not just icons. */
+  /** Everything else you can do with a recipe, in groups, with words. */
   function moreMenu(anchor, r) {
     const translated = state.tr?.id === r.id;
+    const books = P.booksOf(r.id).length;
     P.popover(anchor, (close) => {
       const act = (label, ic, fn, sub) => P.menuItem({ label, icon: ic, sub, onClick: () => { close(); fn(); } });
       return [
-        act("Start cooking, step by step", "chefHat", () => P.stepper.open(shown(r))),
-        act("Remix with AI…", "wand", () => P.aitools.menu(anchor, r), "Vegetarian, lighter, quicker…"),
+        h("div", { class: "pop-h" }, "This recipe"),
+        act("Save to a cookbook…", "bookmark", () => P.cookbooks.menu(anchor, r), books ? `In ${P.plural(books, "cookbook")}` : "Date night, party food, your own lists"),
+        act("Add a photo…", "camera", () => P.gallery.add(r), "Show how yours turned out"),
+        act(r.sub ? "Change its subtag…" : "Set a subtag…", "tree", () => subtagMenu(anchor, r), r.sub || "A cuisine, a method, a mood"),
+        act("Edit", "pencil", editCurrent),
+        act("Duplicate", "copy", () => { const id = P.duplicateRecipe(r.id); P.toast("Duplicated."); P.go(P.pathFor({ tag: r.tag, id, mode: "edit" })); }),
+        h("div", { class: "pop-sep" }),
+        h("div", { class: "pop-h" }, "With AI"),
+        act("Remix…", "wand", () => P.aitools.menu(anchor, r), "Vegetarian, lighter, quicker…"),
         translated ? act("Show the original", "globe", () => { state.tr = null; renderDetail(); }) : act("Translate…", "globe", () => translateMenu(anchor, r), "Arabic, French, Spanish and more"),
         state.lastLang && !translated ? act(`Translate into ${langName(state.lastLang)}`, "globe", () => translate(r, state.lastLang)) : null,
-        act("Scale to what I have…", "scale", () => scaleSheet(r)),
         h("div", { class: "pop-sep" }),
+        h("div", { class: "pop-h" }, "Cooking"),
+        P.menuItem({ label: "Cook Mode", sub: "Bigger type, and the screen stays awake", icon: "flame", on: state.cook, onClick: () => { close(); toggleCook(); } }),
+        act("Scale to what I have…", "scale", () => scaleSheet(r), "“I have 600 g of chicken”"),
         act("Print", "printer", () => window.print()),
         act("Copy as text", "copy", () => copyRecipe(r)),
-        act("Duplicate", "copy", () => { const id = P.duplicateRecipe(r.id); P.toast("Duplicated."); P.go(P.pathFor({ tag: r.tag, id, mode: "edit" })); }),
         r.src ? act("Open the original page", "link", () => window.open(r.src, "_blank", "noopener")) : null,
       ];
-    }, { align: "right" });
+    }, { align: "right", class: "scroll" });
   }
 
   /** Jump to a part of a long recipe; it stays at the top while you scroll. */
@@ -635,26 +629,16 @@
     els.top.replaceChildren(
       h("button", { class: "tagpill", type: "button", title: `Show ${P.tagName(r.tag)}`, onClick: () => P.go(P.pathFor({ tag: r.tag, id: r.id })) }, P.tagName(r.tag)),
       h("div", { class: "acts" },
-        h("button", { class: "askbtn", type: "button", title: "Ask the recipe helper  ( H )", onClick: () => P.help.open(r) }, hi("sparkle"), h("span", {}, "Ask AI")),
-        actBtn("calendar", "Add to meal plan", (e) => P.plan.menu(e.currentTarget, orig)),
-        bookBtn(orig),
-        actBtn("share", "Share a link", () => shareRecipe(orig)),
-        actBtn("dots", "More: remix, translate, scale, print…", (e) => moreMenu(e.currentTarget, orig)),
-        h("button", { class: "editbtn", type: "button", onClick: editCurrent }, hi("pencil"), "Edit")));
-    els.scroll.replaceChildren(heroEl(r), bodyEl(r, servings));
+        state.cook ? h("button", { class: "cookpill", type: "button", title: "Leave Cook Mode  ( C )", onClick: () => toggleCook(false) }, hi("flame"), h("span", {}, "Cook Mode"), hi("x")) : null,
+        orig.user ? h("button", { class: "topbtn", type: "button", title: "Edit  ( E )", onClick: editCurrent }, hi("pencil"), h("span", {}, "Edit")) : null,
+        h("button", { class: "topbtn", type: "button", title: "Share a link to this recipe", onClick: () => shareRecipe(orig) }, hi("share"), h("span", {}, "Share")),
+        h("button", { class: "topbtn", type: "button", "aria-haspopup": "menu", title: "Cookbooks, photos, edit, remix, translate, print…", onClick: (e) => moreMenu(e.currentTarget, orig) }, hi("dots"), h("span", {}, "More"))));
+    els.scroll.replaceChildren(heroEl(orig), bodyEl(r, servings));
     const sim = els.scroll.querySelector(".similar");
     if (sim) setTimeout(() => sim.isConnected && fillSimilar(sim, r), 30);     // after the page has painted
   }
 
-  function heroEl(r) {
-    const fav = P.isFav(r.id);
-    return h("div", { class: "hero" + (r.img ? "" : " empty") },
-      r.img ? h("img", { src: P.photo(r.img), alt: r.title, decoding: "async", fetchpriority: "high", onClick: () => P.lightbox(P.photo(r.img), r.title) }) : h("span", { class: "hero-ph", html: icon("plate") }),
-      r.cr ? h(r.crl ? "a" : "span", { class: "credit", title: r.cr, ...(r.crl ? { href: r.crl, target: "_blank", rel: "noopener noreferrer" } : {}) }, `Photo: ${r.cr}`) : null,
-      h("div", { class: "hero-btns" },
-        r.img ? h("button", { class: "starbtn", type: "button", "aria-label": "View photo full screen", title: "View photo", html: icon("expand"), onClick: () => P.lightbox(P.photo(r.img), r.title) }) : null,
-        h("button", { class: "starbtn fav" + (fav ? " on" : ""), type: "button", "aria-pressed": String(fav), "aria-label": "Favorite", title: "Favorite  ( F )", html: icon("star"), onClick: () => P.toggleFav(r.id) })));
-  }
+  const heroEl = (r) => P.gallery.el(r);
 
   const stat = (ic, value, label, role) => h("div", { class: "stat", "data-role": role || null }, hi(ic), h("b", {}, value), h("small", {}, label));
 
@@ -676,26 +660,52 @@
       P.prices.bar(r, servings),
       chipsEl(r),
       P.diet.badge(r._orig || r),
-      cookRowEl(r),
+      actionsEl(r),
       jumpEl(r),
       h("div", { class: "cols" },
         h("section", { class: "col-ing" + (anyTicked ? " has-checks" : "") },
-          h("div", { class: "sec-head" }, h("h2", { class: "section-h" }, "Ingredients"),
+          h("div", { class: "sec-head" }, h("h2", { class: "section-h" }, "Ingredients", progressEl("ing", P.checked(r.id).size, r.ing.length)),
             h("button", { class: "linkbtn", type: "button", onClick: () => { P.clearChecks(r.id); renderDetail(); } }, "Uncheck all")),
-          h("div", { class: "ing-tools" }, scalerEl(r, servings), unitsEl(),
-            h("button", { class: "textbtn", type: "button", onClick: () => scaleSheet(r._orig || r) }, hi("scale"), "Scale to what I have")),
+          h("div", { class: "ing-tools" }, scalerEl(r, servings), unitsEl()),
           ingredientsEl(r, f), shopBarEl(r, f),
           nutritionEl(r)),
         h("section", { class: "col-steps" },
-          h("div", { class: "sec-head" }, h("h2", { class: "section-h" }, "Directions"),
-            h("button", { class: "linkbtn", type: "button", onClick: () => { P.clearSteps(r.id); renderDetail(); } }, "Start over")),
+          h("div", { class: "sec-head" }, h("h2", { class: "section-h" }, "Directions", progressEl("steps", P.stepsDone(r.id).size, r.steps.length)),
+            h("span", { class: "sec-tools" },
+              h("button", { class: "linkbtn", type: "button", onClick: () => { P.clearSteps(r.id); renderDetail(); } }, "Start over"),
+              cookSwitchEl())),
           h("p", { class: "steps-hint" }, hi("sparkle"), "Stuck? Tap ", h("b", {}, "Explain"), " on a step, or select any words and ask AI."),
           stepsEl(r),
           r.serve ? h("div", { class: "serve" }, hi("plate"), h("p", {}, h("b", {}, "Serve with "), r.serve)) : null,
           r.tip ? h("div", { class: "tip" }, h("span", { class: "tip-h" }, hi("chefHat"), "Tip"), h("p", {}, r.tip)) : null,
           notesEl(r))),
+      madeEl(r),
       h("section", { class: "similar" }));
   }
+
+  /** The three things most people come to a recipe for, with their names on them. */
+  function actionsEl(r) {
+    const orig = r._orig || r;
+    return h("div", { class: "cta" },
+      h("button", { class: "btn lime cta-main", type: "button", title: "Cook it one step at a time, full screen  ( G )", onClick: () => P.stepper.open(r) }, hi("chefHat"), "Start cooking"),
+      h("button", { class: "btn soft", type: "button", "aria-haspopup": "menu", title: "Put it on a day this week", onClick: (e) => P.plan.menu(e.currentTarget, orig) }, hi("calendar"), "Plan it"),
+      h("button", { class: "btn soft", type: "button", title: "Ask the recipe helper anything about this dish  ( H )", onClick: () => P.help.open(r) }, hi("sparkle"), "Ask AI"));
+  }
+
+  /** "3 of 11": how far along the ingredients or the steps are, with a bar that fills. */
+  function progressEl(kind, done, total) {
+    return h("span", { class: "sec-prog" + (done && done >= total ? " full" : ""), "data-prog": kind, hidden: !done },
+      h("span", { class: "sec-bar" }, h("i", { style: { width: `${total ? Math.round((done / total) * 100) : 0}%` } })),
+      h("span", { class: "sec-n" }, `${done} of ${total}`));
+  }
+  function syncProgress(kind, done, total) {
+    const old = els.scroll.querySelector(`[data-prog="${kind}"]`);
+    if (old) old.replaceWith(progressEl(kind, done, total));
+  }
+
+  const cookSwitchEl = () => h("span", { class: "switch-wrap", title: "Bigger type, and the screen stays awake  ( C )" },
+    h("span", { class: "switch-label" }, "Cook Mode"),
+    h("button", { class: "switch", type: "button", role: "switch", "aria-checked": String(state.cook), "aria-label": "Cook Mode", onClick: () => toggleCook() }));
 
   /** Nutrition per serving, with how the calories split between protein, carbs and fat. */
   function nutritionEl(r) {
@@ -734,29 +744,39 @@
         h("span", { class: "sim-m" }, [x.min ? P.fmtMin(x.min) : "", x.level || ""].filter(Boolean).join(" · "))))));
   }
 
-  /** Your star rating, and how often you have cooked it. */
-  function cookRowEl(r) {
-    const cur = P.rating(r.id), times = P.madeTimes(r.id);
+  /** "Made it?": log it, rate it, add a photo of yours. At the end of the recipe, which is where you are when you've made it. */
+  function madeEl(r) {
+    const orig = r._orig || r;
+    const cur = P.rating(orig.id), times = P.madeTimes(orig.id);
     const stars = h("div", { class: "rating", role: "radiogroup", "aria-label": "Your rating" },
       [1, 2, 3, 4, 5].map((n) => h("button", {
-        class: "rstar" + (n <= cur ? " on" : ""), type: "button", role: "radio", "aria-checked": String(n === cur),
-        "aria-label": `${n} ${n === 1 ? "star" : "stars"}`, title: n === cur ? "Clear your rating" : `${n} of 5`, html: icon("star"), onClick: () => P.setRating(r.id, n),
+        class: "rstar" + (n <= cur ? " on" : ""), type: "button", role: "radio", "aria-checked": String(n === cur), "data-n": String(n),
+        "aria-label": `${n} ${n === 1 ? "star" : "stars"}`, title: n === cur ? "Clear your rating" : `${n} of 5`, html: icon("star"), onClick: () => P.setRating(orig.id, n),
       })));
+    // hovering a star lights it and the ones before it, so you can see what you are about to give
+    stars.addEventListener("pointerover", (e) => { const n = +(e.target.closest(".rstar")?.dataset.n || 0); if (n) for (const b of stars.children) b.classList.toggle("hot", +b.dataset.n <= n); });
+    stars.addEventListener("pointerleave", () => { for (const b of stars.children) b.classList.remove("hot"); });
     const made = h("button", {
-      class: "madebtn", type: "button", title: "Log that you cooked this",
-      onClick: () => { const undo = P.markMade(r.id); P.toast(`Logged. That's ${P.plural(P.madeTimes(r.id).length, "time")} you've made it.`, { action: { label: "Undo", fn: undo } }); },
+      class: "btn lime madebtn", type: "button", title: "Log that you cooked this",
+      onClick: (e) => {
+        P.burst(e.currentTarget);
+        const undo = P.markMade(orig.id);
+        P.toast(`Logged. That's ${P.plural(P.madeTimes(orig.id).length, "time")} you've made it.`, { action: { label: "Undo", fn: undo } });
+      },
     }, hi("check"), "I made this");
-    return h("div", { class: "cookrow", "data-role": "cookrow" },
-      h("button", { class: "btn lime cookbtn", type: "button", title: "Cook it one step at a time  ( G )", onClick: () => P.stepper.open(r) }, hi("chefHat"), "Start cooking"),
-      h("button", { class: "btn ghost cookbtn", type: "button", title: "Rewrite it with AI: vegetarian, lighter, quicker…", onClick: (e) => P.aitools.menu(e.currentTarget, r) }, hi("wand"), "Remix"),
-      stars, made,
-      times.length ? h("span", { class: "made-note" }, `Made ${times.length === 1 ? "once" : `${times.length}×`} · last ${P.ago(P.lastMade(r.id))}`) : null);
+    return h("section", { class: "made", "data-role": "cookrow" },
+      h("div", { class: "made-txt" },
+        h("h2", {}, times.length ? "Made it again?" : "Made it?"),
+        h("p", {}, times.length ? `You've made it ${times.length === 1 ? "once" : `${times.length} times`}, last ${P.ago(P.lastMade(orig.id))}. ` : "",
+          cur ? "Tap a star to change your rating." : "Log it and give it stars: your best dishes collect in Top rated.")),
+      h("div", { class: "made-acts" }, made, stars,
+        h("button", { class: "btn soft sm", type: "button", title: "Add a photo of how yours turned out", onClick: () => P.gallery.add(orig) }, hi("camera"), "Add photo")));
   }
 
   /** A rating or a cooked-it changed: redo just that row, and the list when it is sorted or filtered by it. */
   function onCook(id) {
     const r = P.route.mode === "view" && P.recipe(P.route.id);
-    if (r && id === r.id) els.scroll.querySelector('[data-role="cookrow"]')?.replaceWith(cookRowEl(r));
+    if (r && id === r.id) els.scroll.querySelector('[data-role="cookrow"]')?.replaceWith(madeEl(shown(r)));
     if (["rating", "cooked"].includes(P.S.ui.sort) || ["top", "made"].includes(P.route.tag)) renderList();
   }
 
@@ -769,13 +789,11 @@
 
   function chipsEl(r) {
     const source = r.dom ? (r.src ? h("a", { class: "chip", href: r.src, target: "_blank", rel: "noopener noreferrer", title: "Open the original" }, hi("doc"), r.dom) : h("span", { class: "chip" }, hi("doc"), r.dom)) : null;
-    const sw = h("button", { class: "switch", type: "button", role: "switch", "aria-checked": String(state.cook), "aria-label": "Cook Mode", onClick: () => toggleCook() });
     return h("div", { class: "chips" },
       (r.diet || []).map((d) => h("button", { class: `chip diet ${d}`, type: "button", title: `More ${DIETS[d] || d} recipes`, onClick: () => browse({ diet: d }) }, hi(d === "spicy" ? "fire" : "leaf"), DIETS[d] || d)),
-      h("button", { class: "chip" + (r.sub ? "" : " empty"), type: "button", "aria-haspopup": "menu", "aria-expanded": "false", onClick: (e) => subtagMenu(e.currentTarget, r) }, hi("tree"), r.sub || "Subtag"),
+      r.sub ? h("button", { class: "chip", type: "button", "aria-haspopup": "menu", "aria-expanded": "false", title: "Change its subtag", onClick: (e) => subtagMenu(e.currentTarget, r) }, hi("tree"), r.sub) : null,
       source,
-      r.video ? h("a", { class: "chip", href: r.video, target: "_blank", rel: "noopener noreferrer" }, hi("play"), "Watch video") : null,
-      h("span", { class: "switch-wrap", title: "Bigger type, and the screen stays awake" }, h("span", { class: "switch-label" }, "Cook Mode"), sw));
+      r.video ? h("a", { class: "chip video", href: r.video, target: "_blank", rel: "noopener noreferrer" }, hi("play"), "Watch video") : null);
   }
 
   function subtagMenu(anchor, r) {
@@ -833,6 +851,7 @@
         li.classList.toggle("done", now);
         li.setAttribute("aria-checked", String(now));
         li.closest(".col-ing")?.classList.toggle("has-checks", P.checked(r.id).size > 0);
+        syncProgress("ing", P.checked(r.id).size, r.ing.length);
         els.scroll.querySelector(".shopbar")?.replaceWith(shopBarEl(r, f));      // ticked = already have it
       };
       li.addEventListener("click", flip);
@@ -870,7 +889,7 @@
           h("div", { class: "step-tools" },
             timers.map((t) => h("button", { class: "timer-chip", type: "button", title: `Start a ${t.label} timer`, onClick: (e) => { e.stopPropagation(); P.cook.start(t.seconds, `${short(r.title)} · step ${i + 1}`); } }, hi("timer"), t.label)),
             explain)));
-      const flip = () => { if (!selecting(li)) { P.toggleStep(r.id, i); mark(); } };
+      const flip = () => { if (!selecting(li)) { P.toggleStep(r.id, i); mark(); syncProgress("steps", P.stepsDone(r.id).size, r.steps.length); } };
       li.addEventListener("click", flip);
       li.addEventListener("keydown", (e) => { if ((e.key === " " || e.key === "Enter") && e.target === li) { e.preventDefault(); flip(); } });
       ol.append(li);
@@ -898,6 +917,7 @@
     els.detail.classList.toggle("cook", state.cook);
     for (const s of els.detail.querySelectorAll(".switch")) s.setAttribute("aria-checked", String(state.cook));
     P.cook.set(state.cook);
+    if (P.route.mode === "view" && P.route.id) renderDetail();          // the top bar shows a way back out
     if (state.cook) {
       els.scroll.scrollTo({ top: 0, behavior: "smooth" });
       P.toast("Cook Mode on — the screen stays awake. Tap a step to tick it off.");
@@ -1116,14 +1136,7 @@
     P.go(P.pathFor({ tag: P.route.tag }));
   }
 
-  function updateShopBadge() {
-    const n = P.shop.count(), btn = $("#btn-folder");
-    btn.classList.toggle("badged", n > 0);
-    if (n > 0) btn.dataset.badge = n > 99 ? "99+" : String(n); else delete btn.dataset.badge;
-  }
-
   function onShop() {
-    updateShopBadge();
     syncQuick();
     const { mode, id } = P.route;
     if (mode === "shop") renderDetail();
@@ -1227,17 +1240,20 @@
     if (badge) { badge.textContent = n > 99 ? "99+" : String(n); badge.hidden = !n; }
   }
 
-  /** The Discover / Plan / Pantry / List buttons above the tiles: which one is open, and the counts. */
+  /** The menu: which place is open, and the counts beside the meal plan and the shopping list. */
   function syncQuick() {
     syncTabs();
-    for (const b of document.querySelectorAll(".qbtn[data-go]")) {
-      const on = P.route.mode === b.dataset.go;
+    const { mode, tag } = P.route;
+    const collection = mode === "view" && (["all", "recent", "top", "made", "quick"].includes(tag) || P.isBook(tag));
+    for (const b of document.querySelectorAll(".mi[data-go], #btn-folder")) {
+      const go = b.dataset.go;
+      const on = go === "fav" ? mode === "view" && tag === "fav" : go ? mode === go : collection;
       b.classList.toggle("on", on);
       if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
     }
     const badge = (sel, n) => { const el = document.querySelector(sel); if (el) { el.textContent = n > 99 ? "99+" : String(n); el.hidden = !n; } };
-    badge('.qbtn[data-go="shop"] .qn', P.shop.count());
-    badge('.qbtn[data-go="plan"] .qn', P.plan.upcoming());
+    badge('.mi[data-go="shop"] .qn', P.shop.count());
+    badge('.mi[data-go="plan"] .qn', P.plan.upcoming());
   }
 
   function onData() {

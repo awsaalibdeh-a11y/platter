@@ -136,6 +136,25 @@
     box.querySelector(".lb-x").focus({ preventScroll: true });
   };
 
+  /** A small burst of confetti from a button, for "I made this". Nothing moves for anyone who asked for less motion. */
+  P.burst = (anchor) => {
+    if (!anchor || !Element.prototype.animate || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const r = anchor.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const colors = ["#c6e66c", "#f2b01e", "#7ea11a", "#e8744a", "#8a63d2", "#4a86d9"];
+    const box = h("div", { class: "burst", "aria-hidden": "true" });
+    document.body.append(box);
+    for (let i = 0; i < 20; i++) {
+      const a = (Math.PI * 2 * i) / 20 + Math.random() * 0.35, d = 38 + Math.random() * 52;
+      const dot = h("i", { style: { left: `${cx}px`, top: `${cy}px`, background: colors[i % colors.length], borderRadius: i % 3 ? "2px" : "50%" } });
+      box.append(dot);
+      dot.animate([
+        { transform: "translate(-50%, -50%) scale(1)", opacity: 1 },
+        { transform: `translate(calc(-50% + ${Math.cos(a) * d}px), calc(-50% + ${Math.sin(a) * d - 14}px)) scale(0.35) rotate(${Math.round(Math.random() * 300)}deg)`, opacity: 0 },
+      ], { duration: 620 + Math.random() * 280, easing: "cubic-bezier(0.2, 0.8, 0.2, 1)", fill: "forwards" });
+    }
+    setTimeout(() => box.remove(), 1000);
+  };
+
   /* ---------- browser helpers ---------- */
   P.copyText = async (text) => {
     try { await navigator.clipboard.writeText(text); return true; } catch { /* fall through */ }

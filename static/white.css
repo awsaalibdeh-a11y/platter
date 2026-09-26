@@ -7,11 +7,27 @@
 :root[data-theme="white"] .ibtn:hover { background: rgba(0, 0, 0, 0.05); }
 :root[data-theme="white"] .ibtn.sm { color: #7b7c88; }
 :root[data-theme="white"] .side { background: var(--bg-side); box-shadow: 1px 0 0 rgba(0, 0, 0, 0.06), 12px 0 26px -16px rgba(0, 0, 0, 0.12); }
-:root[data-theme="white"] .cbtn { background: #ffffff; color: var(--ink); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.05); }
-:root[data-theme="white"] .cbtn:hover { background: #f9f9f9; }
-:root[data-theme="white"] .cbtn.lime { background: var(--lime); }
-:root[data-theme="white"] .cbtn.lime:hover { background: #bfe05f; }
-:root[data-theme="white"] .cbtn.on { background: var(--lime-soft); box-shadow: 0 0 0 1.5px var(--lime); }
+:root[data-theme="white"] .newbtn { background: var(--lime); color: var(--lime-ink); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18); }
+:root[data-theme="white"] .newbtn:hover { background: #bfe05f; box-shadow: 0 4px 12px -3px rgba(0, 0, 0, 0.4); }
+:root[data-theme="white"] .mi { color: var(--ink-2); }
+:root[data-theme="white"] .mi:hover { background: rgba(0, 0, 0, 0.045); color: var(--ink); }
+:root[data-theme="white"] .mi.on { background: #ffffff; color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(0, 0, 0, 0.04); }
+:root[data-theme="white"] .mi-ic { background: #eef1e2; color: #557509; }
+:root[data-theme="white"] .mi-more { color: var(--faint); }
+:root[data-theme="white"] .mi:hover .mi-more { color: var(--muted); }
+:root[data-theme="white"] .mi[data-go="discover"] .mi-ic { background: #e9f3c4; color: #4a6608; }
+:root[data-theme="white"] .mi[data-go="ai"] .mi-ic { background: #efe6fb; color: #6a3fc0; }
+:root[data-theme="white"] .mi[data-go="fav"] .mi-ic { background: #fdf0cc; color: #9a6a00; }
+:root[data-theme="white"] .mi[data-go="plan"] .mi-ic { background: #e2edfc; color: #2458b0; }
+:root[data-theme="white"] .mi[data-go="shop"] .mi-ic { background: #fde8d8; color: #ad4f0c; }
+:root[data-theme="white"] .mi[data-go="pantry"] .mi-ic { background: #def3ea; color: #1d7152; }
+:root[data-theme="white"] .mi[data-go="stats"] .mi-ic { background: #fde3e6; color: #b0303f; }
+:root[data-theme="white"] #btn-folder .mi-ic { background: #e3f1f6; color: #1f6a86; }
+:root[data-theme="white"] .mi[data-go="settings"] .mi-ic { background: #f4f4f5; color: #515257; }
+:root[data-theme="white"] .side-h h2 { color: var(--muted); }
+:root[data-theme="white"] .side-h .textbtn:hover { background: rgba(0, 0, 0, 0.05); }
+:root[data-theme="white"] .side-h .textbtn.on { background: var(--lime); color: var(--lime-ink); }
+:root[data-theme="white"] .side-foot { border-top: 1px solid var(--line); background: var(--bg-side); }
 :root[data-theme="white"] .tile { background: linear-gradient(145deg, #f0f0f1, #d3d3d7); }
 :root[data-theme="white"] .tile-label { background: rgba(255, 255, 255, 0.97); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); }
 :root[data-theme="white"] .tile.on { box-shadow: inset 0 0 0 2.5px var(--lime), 0 0 0 1.5px #1e2a08; }
@@ -20,7 +36,9 @@
 :root[data-theme="white"] .load-fail { color: var(--muted); }
 :root[data-theme="white"] .list { background: var(--bg-list); }
 :root[data-theme="white"] .list-count { color: var(--muted); }
-:root[data-theme="white"] .sortbtn { color: #27272a; }
+:root[data-theme="white"] .sortbtn { background: #ffffff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04); color: var(--ink-2); }
+:root[data-theme="white"] .sortbtn:hover { background: #f9f9f9; }
+:root[data-theme="white"] .sortbtn.filtered { background: var(--lime-soft); box-shadow: inset 0 0 0 1.5px var(--lime); color: #33430a; }
 :root[data-theme="white"] .sortbtn.filtered::after { background: var(--lime-2); box-shadow: 0 0 0 2px var(--bg-list); }
 :root[data-theme="white"] .search input { background: var(--field); color: var(--ink); }
 :root[data-theme="white"] .search input::placeholder { color: #b4b5bc; }
@@ -30,6 +48,7 @@
 :root[data-theme="white"] .search-clear:hover { background: rgba(0, 0, 0, 0.06); }
 :root[data-theme="white"] .fchip { background: var(--lime-soft); color: #33430a; }
 :root[data-theme="white"] .row:hover:not(.on) { background: rgba(0, 0, 0, 0.045); }
+:root[data-theme="white"] .row:active:not(.on) { background: rgba(0, 0, 0, 0.09); }
 :root[data-theme="white"] .row.on { background: var(--lime); }
 :root[data-theme="white"] .row-thumb { background: linear-gradient(145deg, #f0f0f1, #d3d3d7); }
 :root[data-theme="white"] .row-play { background: rgba(255, 255, 255, 0.93); color: #101112; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); }
@@ -134,12 +153,6 @@
 :root[data-theme="white"] .cover-opt.on { box-shadow: 0 0 0 2px #ffffff, 0 0 0 4.5px #7ea11a; }
 :root[data-theme="white"] .toast { background: #1a1a1b; color: #ffffff; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); }
 :root[data-theme="white"] .toast-act { color: var(--lime); }
-:root[data-theme="white"] .lightbox { background: rgba(0, 0, 0, 0.93); }
-:root[data-theme="white"] .lightbox img { box-shadow: 0 20px 70px rgba(0, 0, 0, 0.5); }
-:root[data-theme="white"] .lb-x { background: rgba(255, 255, 255, 0.16); color: #ffffff; }
-:root[data-theme="white"] .aibtn { background: var(--lime); color: var(--lime-ink); }
-:root[data-theme="white"] .aibtn:hover { background: #bfe05f; }
-:root[data-theme="white"] .cbtn.badged::after { background: var(--lime); color: var(--lime-ink); box-shadow: 0 0 0 2px var(--bg-side); }
 :root[data-theme="white"] .textbtn { color: #557509; }
 :root[data-theme="white"] .shopbtn.in { background: var(--lime-soft); box-shadow: inset 0 0 0 1.5px var(--lime); color: #33430a; }
 :root[data-theme="white"] .shopnote { color: var(--muted); }
@@ -208,15 +221,28 @@
 :root[data-theme="white"] .pcard-act { background: var(--lime); color: var(--lime-ink); }
 :root[data-theme="white"] .pcard-act:hover { background: #bfe05f; }
 :root[data-theme="white"] .pcard-act.on { background: var(--lime-soft); box-shadow: inset 0 0 0 1.5px var(--lime); color: #33430a; }
-:root[data-theme="white"] .qbtn { background: #ffffff; color: #39393d; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.05); }
-:root[data-theme="white"] .qbtn:hover { background: #f9f9f9; }
-:root[data-theme="white"] .qbtn.on { background: var(--lime); color: var(--lime-ink); }
 :root[data-theme="white"] .qn { background: var(--lime); color: var(--lime-ink); }
-:root[data-theme="white"] .qbtn.on .qn { background: #ffffff; }
 :root[data-theme="white"] .tile-n { background: rgba(0, 0, 0, 0.45); color: #fff; }
 :root[data-theme="white"] .hero:not(.editable):not(.empty)::after { background: linear-gradient(transparent, rgba(0, 0, 0, 0.2)); }
-:root[data-theme="white"] .askbtn { background: var(--lime-soft); color: #33430a; }
-:root[data-theme="white"] .askbtn:hover { background: var(--lime); }
+:root[data-theme="white"] .topbtn { color: var(--ink-2); }
+:root[data-theme="white"] .topbtn:hover { background: rgba(0, 0, 0, 0.05); }
+:root[data-theme="white"] .cookpill { background: var(--lime); color: var(--lime-ink); }
+:root[data-theme="white"] .cookpill:hover { background: #bfe05f; }
+:root[data-theme="white"] .gal-hero { background: linear-gradient(145deg, #f0f0f2, #d3d3d7); }
+:root[data-theme="white"] .gal-hero .hero-ph.add { color: var(--muted); }
+:root[data-theme="white"] .gal-hero .hero-ph.add:hover { color: var(--ink-2); }
+:root[data-theme="white"] .gal-th { background: linear-gradient(145deg, #f0f0f1, #d3d3d7); }
+:root[data-theme="white"] .gal-th.on { box-shadow: 0 0 0 2px var(--lime-2); }
+:root[data-theme="white"] .gal-th.add { background: var(--field); box-shadow: inset 0 0 0 1.5px #c2c2c7; color: var(--muted); }
+:root[data-theme="white"] .btn.soft { background: var(--chip); }
+:root[data-theme="white"] .btn.soft:hover { background: #efeff1; }
+:root[data-theme="white"] .sec-bar { background: var(--chip); }
+:root[data-theme="white"] .sec-bar i { background: var(--lime-2); }
+:root[data-theme="white"] .sec-prog.full .sec-bar i { background: #6b9a1f; }
+:root[data-theme="white"] .sec-n { color: var(--muted); }
+:root[data-theme="white"] .made { background: var(--field); }
+:root[data-theme="white"] .made-txt p { color: var(--muted); }
+:root[data-theme="white"] .made .rstar.hot { color: var(--star); }
 :root[data-theme="white"] .about { color: #48484c; }
 :root[data-theme="white"] .about.sk i { background: #f0f0f2; }
 :root[data-theme="white"] .stats { background: #ffffff; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.07); }

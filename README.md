@@ -3,6 +3,8 @@
 A recipe box with three panes — tags, the recipes in a tag, and the recipe itself — laid out
 like an iPad app, in a browser.
 
+- **A labelled sidebar**, not a row of icons: Discover, Ask AI, Favorites, Meal plan, Shopping list, What can I make?,
+  Your kitchen and Collections, each with its own name and colour, so every feature is one glance and one tap away
 - **Tags** as photo tiles; rename them, change their cover, hide them, add your own
 - **Search this tag**, sort, and filter by favourites, video or subtag
 - **Servings scaler** that rewrites the quantities (`1 cup` → `1 ½ cups`, `4 cloves` → `6 cloves`)
@@ -15,8 +17,9 @@ like an iPad app, in a browser.
 - **A door at the front**: on the first visit Platter asks for its creator's name. The right name (any capitalisation)
   opens it for good; a wrong one gives 30 minutes with a timer in the corner, then Platter closes behind a lock
   screen until the name is given (`static/js/gate.js`). It is stored in the visitor's browser, like everything else
-- **White, Warm and Dark**: a crisp white theme (the default in daylight), the original warm paper tones, and dark; Auto
-  follows your device. Switch with the sun/moon button, in Settings, or press `t`
+- **White, Warm and Dark**: a crisp white theme (the default), the original warm paper tones, and a calm charcoal dark
+  theme — refined for even contrast and no muddy tint; Auto follows your device. Switch with the sun/moon button,
+  in Settings, or press `t`
 - **Settings**, in one clear page (the gear): appearance, units, diet, prices, your data, help
 - **Search everything** (Ctrl K, or the bar at the top of the sidebar): recipes by name or ingredient, tags, cookbooks
   and actions such as "dark mode" or "snap my fridge"
@@ -50,6 +53,10 @@ like an iPad app, in a browser.
 - **Cook step by step**: one step at a time, full screen and big type, with the ingredients that step uses, its timers, read-aloud,
   **voice control** (say "next", "back", "repeat", "timer"; Chrome and Edge), swipe or arrow keys, and "I made this" at the end
 - **Every recipe described**: a short description, difficulty, calories and a protein/carbs/fat estimate per serving, a serving suggestion, a tip and diet labels (vegetarian, vegan, gluten-free, dairy-free, spicy). Filter any tag by diet, Easy or Under 30 minutes
+- **A photo gallery for every dish**: real photographs beyond the cover, found automatically (Wikipedia, Wikimedia
+  Commons, Openverse, TheMealDB — `GET /api/photos`, up to 8, cached and credited); swipe through them, tap to view
+  full screen with arrow keys and swipe gestures, and add your own photos of how yours turned out (kept in your
+  browser). "I made this" offers to add one right away
 - **Discover**: the front page, with a recipe of the day, today's plan, quick dinners, what's new, cuisines, diets and "cook it again"; the picks change once a day
 - **You might also like** under every recipe, matched on shared ingredients, tag and cuisine
 - **Dark mode**: Auto, Light or Dark in the settings menu (the people icon), or press `t`
@@ -135,7 +142,7 @@ theme) by `scripts/build_dark_css.py`: run it after changing colours in `style.c
 ```
 app.py                 Flask: page, cached/gzipped assets, /api/import (SSRF-guarded)
 prices.py              /api/prices: a grocery basket priced where you are, as a factor per kind of food
-ai.py                  /api/ai/ideas, /api/ai/recipe, /api/ai/remix, /api/ai/extract, /api/ai/fridge, /api/ai/translate, /api/ai/ask (OpenAI) and /api/ai/photo (free photo sources)
+ai.py                  /api/ai/ideas, /api/ai/recipe, /api/ai/remix, /api/ai/extract, /api/ai/fridge, /api/ai/translate, /api/ai/ask (OpenAI); /api/ai/photo and /api/photos (free photo sources: one photo, or a recipe's whole gallery)
 templates/index.html   the three panes
 static/style.css       every size measured from the reference, in rem
 static/js/util.js      icons, quantity parser and scaler
@@ -157,6 +164,7 @@ static/js/share.js     share links that carry the recipe, and the page they open
 static/js/help.js      the recipe helper: select-to-ask, Explain, the streaming chat panel
 static/js/steps.js     cook step by step
 static/js/discover.js  the Discover front page
+static/js/gallery.js   the photo gallery on a recipe: swipe, thumbnails, the full-screen viewer, your own photos
 static/dark.css        the dark theme (generated)
 static/white.css       the white theme (generated)
 static/sw.js           the service worker: the app and library offline, remembered photos

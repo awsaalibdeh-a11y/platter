@@ -6,14 +6,14 @@
   const hi = (name) => h("span", { class: "ic-wrap", html: P.icon(name) });
 
   const THEMES = [
-    ["auto", "Auto", "White by day, dark at night: follows your device"],
-    ["white", "White", "Crisp and bright"],
+    ["white", "White", "Crisp and bright. The default"],
     ["warm", "Warm", "Soft paper tones"],
-    ["dark", "Dark", "Easy on the eyes at night"],
+    ["dark", "Dark", "Calm charcoal, easy on the eyes at night"],
+    ["auto", "Auto", "Follows your device: white by day, dark at night"],
   ];
 
   /** A little picture of the three panes in that theme's colours: sidebar, list, recipe (with a title, a line and the lime button). */
-  const PV = { white: ["#f1f1f4", "#f7f7f9", "#ffffff", "#111114"], warm: ["#f0efe9", "#f5f4f0", "#fafaf8", "#171715"], dark: ["#1f1f1b", "#1a1a17", "#151513", "#ecebe5"] };
+  const PV = { white: ["#f1f1f4", "#f7f7f9", "#ffffff", "#111114"], warm: ["#f0efe9", "#f5f4f0", "#fafaf8", "#171715"], dark: ["#1a1b20", "#16171c", "#121317", "#ededf2"] };
   function preview(t) {
     const bg = (i) => (t === "auto" ? `linear-gradient(135deg, ${PV.white[i]} 50%, ${PV.dark[i]} 50%)` : PV[t][i]);
     const ink = t === "dark" ? PV.dark[3] : PV.white[3];

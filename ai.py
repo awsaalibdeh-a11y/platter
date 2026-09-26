@@ -1,9 +1,10 @@
 """Platter's AI: "what do you want to make?" -> a few dish ideas with photos -> one full recipe.
 
 Text comes from OpenAI (OPENAI_API_KEY, optional OPENAI_MODEL). Pictures are real photographs from
-free sources, tried in order: Wikipedia for a named dish, Openverse for everything else, TheMealDB
-as a last resort. The photo endpoint only ever talks to those three hosts, never to a URL the
-browser supplies, so it cannot be used to reach anything else.
+free sources, tried in order: Wikipedia for a named dish, Wikimedia Commons and Openverse for
+everything else, TheMealDB as a last resort. /api/ai/photo finds one; /api/photos finds up to eight
+for a recipe's gallery. Both only ever talk to those hosts, never to a URL the browser supplies, so
+neither can be used to reach anything else.
 """
 
 import json
@@ -442,6 +443,11 @@ def _wikipedia(name, title):
 
 
 def _commons(title, wiki):
+    return next(_commons_all(title, wiki), None)
+
+
+def _commons_all(title, wiki, queries=3):
+    """Every Commons photo that plausibly shows the dish, best first, from up to `queries` searches."""
     seen = []
     for q in (title, wiki, " ".join(_tokens(title)[-2:])):
         if not q or q.lower() in seen:
@@ -464,14 +470,17 @@ def _commons(title, wiki):
                 continue
             who = _s(re.sub(r"<[^>]+>", "", (meta.get("Artist") or {}).get("value", "")), 40)
             lic = _s((meta.get("LicenseShortName") or {}).get("value"), 24)
-            return {"url": thumb, "credit": " · ".join(x for x in (who, lic, "Wikimedia Commons") if x),
-                    "link": "https://commons.wikimedia.org/wiki/" + quote(p["title"].replace(" ", "_"))}
-        if len(seen) >= 3:
+            yield {"url": thumb, "credit": " · ".join(x for x in (who, lic, "Wikimedia Commons") if x),
+                   "link": "https://commons.wikimedia.org/wiki/" + quote(p["title"].replace(" ", "_"))}
+        if len(seen) >= queries:
             break
-    return None
 
 
 def _openverse(title, wiki):
+    return next(_openverse_all(title, wiki), None)
+
+
+def _openverse_all(title, wiki):
     q = wiki or " ".join(_tokens(title)[-2:]) or title
     d = _get("https://api.openverse.org/v1/images/", q=q, category="photograph", extension="jpg", page_size="10", mature="false")
     for r in ((d or {}).get("results") or []):
@@ -480,12 +489,15 @@ def _openverse(title, wiki):
         if thumb.startswith(IMG_HOSTS) and _int(r.get("width")) >= 500 and FOODISH.search(text) and _relevant(title, wiki, text):
             who = _s(r.get("creator"), 40)
             lic = f"{(r.get('license') or '').upper()} {r.get('license_version') or ''}".strip()
-            return {"url": thumb, "credit": " · ".join(x for x in (who, lic, "Openverse") if x),
-                    "link": r.get("foreign_landing_url") or r.get("url") or ""}
-    return None
+            yield {"url": thumb, "credit": " · ".join(x for x in (who, lic, "Openverse") if x),
+                   "link": r.get("foreign_landing_url") or r.get("url") or ""}
 
 
 def _mealdb(title):
+    return next(_mealdb_all(title), None)
+
+
+def _mealdb_all(title):
     want = set(_tokens(title))
     for q in (title, " ".join(_tokens(title)[:2])):
         if not q:
@@ -494,8 +506,7 @@ def _mealdb(title):
         for m in ((d or {}).get("meals") or []):
             got = set(_tokens(m.get("strMeal")))
             if want and got and len(want & got) / len(want | got) >= 0.6 and str(m.get("strMealThumb", "")).startswith(IMG_HOSTS):
-                return {"url": m["strMealThumb"], "credit": "TheMealDB", "link": f"https://www.themealdb.com/meal/{m['idMeal']}"}
-    return None
+                yield {"url": m["strMealThumb"], "credit": "TheMealDB", "link": f"https://www.themealdb.com/meal/{m['idMeal']}"}
 
 
 @bp.get("/api/ai/photo")
@@ -521,6 +532,83 @@ def photo():
         _photos.clear()
     _photos[key] = (time.time(), found or {})
     return jsonify(found or {})
+
+
+# ---------- more photos of a dish, for the gallery on its page ----------
+GALLERY_MAX = 8
+GALLERY_WAIT = 10                                      # seconds for all four sources together
+_gallery_pool = ThreadPoolExecutor(max_workers=12)      # the four sources are asked at once, bounded site-wide
+
+
+def _photo_key(url):
+    """The same picture at another size is the same photo: Wikimedia's file name, or TheMealDB's path without a size."""
+    m = re.search(r"/wikipedia/[^/]+/(?:thumb/)?[0-9a-f]/[0-9a-f]{2}/([^/?#]+)", url or "")
+    if m:
+        return "wm:" + m.group(1).lower()
+    return re.sub(r"/(?:preview|small|medium|large)$", "", (url or "").split("?")[0]).lower()
+
+
+def _take(gen, n):
+    out = []
+    try:
+        for x in gen:
+            out.append(x)
+            if len(out) >= n:
+                break
+    except Exception as e:                                # a source that breaks mid-way keeps what it found
+        log.warning("photo source failed: %s", e)
+    return out
+
+
+def gallery(title, wiki="", have=""):
+    """Up to GALLERY_MAX real photos of the dish from every free source, each checked against its name, none twice,
+    and never the recipe's own cover (`have`) again."""
+    jobs = [
+        _gallery_pool.submit(lambda: [x for x in ((wiki and _wikipedia(wiki, title)), _wikipedia(title, title)) if x]),
+        _gallery_pool.submit(_take, _commons_all(title, wiki, queries=2), 6),
+        _gallery_pool.submit(_take, _openverse_all(title, wiki), 4),
+        _gallery_pool.submit(_take, _mealdb_all(title), 3),
+    ]
+    seen = {_photo_key(have)} if have else set()
+    out = []
+    deadline = time.time() + GALLERY_WAIT
+    for job in jobs:                                      # in this order: Wikipedia, Commons, Openverse, TheMealDB
+        try:
+            found = job.result(timeout=max(0.05, deadline - time.time()))
+        except Exception as e:                            # slow or broken: the others still count
+            log.warning("photo lookup failed: %s", e)
+            continue
+        for p in found or []:
+            url = str(p.get("url", ""))
+            key = _photo_key(url)
+            if url.startswith(IMG_HOSTS) and key not in seen:
+                seen.add(key)
+                out.append({"url": url, "credit": _s(p.get("credit"), 90), "link": _s(p.get("link"), 300)})
+    return out[:GALLERY_MAX]
+
+
+@bp.get("/api/photos")
+def photos():
+    title = _s(request.args.get("title"), 80)
+    wiki = _s(request.args.get("wiki"), 90)
+    have = _s(request.args.get("have"), 400)
+    if not title:
+        return jsonify(error="Missing title."), 400
+    key = ("gallery", title.lower(), wiki.lower(), _photo_key(have))
+    hit = _photos.get(key)
+    if hit and time.time() - hit[0] < (86400 if hit[1] else 1800):
+        found = hit[1]
+    else:
+        if _limited("photo"):
+            return jsonify(error="Too many photo lookups."), 429
+        found = gallery(title, wiki, have)
+        if len(_photos) > 400:
+            _photos.clear()
+        _photos[key] = (time.time(), found)
+    resp = jsonify(photos=found)
+    # the same dish has the same photos for days; an empty answer may just be a source having a bad minute
+    resp.headers["Cache-Control"] = "public, max-age=604800" if found else "public, max-age=1800"
+    return resp
 
 
 # ---------- remix a recipe, and read one from a photo or pasted text ----------
