@@ -36,6 +36,8 @@ urllib3_connection.allowed_gai_family = lambda: socket.AF_INET
 BASE = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(BASE, "static")
 app = Flask(__name__, static_folder=None)          # assets are served by static_files() below
+import hubguard  # noqa: E402  (the owner's universal switches, kept in Cramly)
+hubguard.install(app, "platter")
 app.config["TEMPLATES_AUTO_RELOAD"] = True          # an edited index.html shows up without a restart
 
 from ai import bp as ai_bp  # noqa: E402  (after load_dotenv so it sees OPENAI_MODEL)
@@ -129,7 +131,7 @@ def _csp(nonce):
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com",
         "img-src 'self' data: blob: https:",
-        "connect-src 'self' https://api.bigdatacloud.net",
+        "connect-src 'self' https://api.bigdatacloud.net https://cramly-twz5.onrender.com",
         "media-src 'self' data: blob:",
         "worker-src 'self'",
         "manifest-src 'self'",
