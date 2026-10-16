@@ -67,6 +67,17 @@ class Pages(unittest.TestCase):
         self.assertIn("camera=(self)", r.headers.get("Permissions-Policy", ""))
         self.assertIn("microphone=(self)", r.headers.get("Permissions-Policy", ""))
 
+    def test_the_page_may_talk_to_homebase_and_only_to_the_addresses_listed(self):
+        r = self.c.get("/")
+        connect = [d for d in r.headers["Content-Security-Policy"].split(";") if d.strip().startswith("connect-src")][0]
+        self.assertIn("https://homebase-family.onrender.com", connect)
+        self.assertNotIn("evil.example.com", connect)
+        page = r.get_data(as_text=True)
+        self.assertIn('hb: ["https://homebase-family.onrender.com"]', page, "the page is told which Homebase it may use")
+        for script in ("homebase.js", "install.js"):
+            self.assertIn(f"/static/js/{script}", page)
+            self.assertEqual(self.c.get(f"/static/js/{script}").status_code, 200)
+
     def test_service_worker_is_never_cached_hard(self):
         r = self.c.get("/sw.js")
         self.assertEqual(r.status_code, 200)

@@ -81,14 +81,21 @@
         const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
         return section("Get the app", "Open Platter like any other app: its own icon, full screen, and it works offline.",
           installed ? row("check", "Installed", "You're using Platter as an app.")
-            : P.installPrompt ? h("button", { class: "btn lime sm", type: "button", onClick: async () => {
-              P.installPrompt.prompt();
-              await P.installPrompt.userChoice.catch(() => null);
-              P.installPrompt = null;
-              redraw();
-            } }, hi("download"), "Install Platter")
-              : h("p", { class: "set-about" }, ios ? "On iPhone or iPad: tap the Share button, then “Add to Home Screen”." : "In your browser's menu, choose “Install app” or “Add to Home screen”."));
+                        : h("div", { class: "row-btns" }, h("button", { class: "btn lime sm", type: "button", onClick: async () => { await P.installApp(); redraw(); } }, hi("download"), "Install Platter"),
+              ios ? h("p", { class: "set-about" }, "On iPhone or iPad: tap the Share button, then “Add to Home Screen”.") : null))
       })(),
+      section("Homebase", "Plan a recipe on a day here and it appears on your family's meal plan in Homebase, with the recipe.",
+        P.hb.connected()
+          ? h("div", {},
+            row("check", `Connected to ${P.hb.family()}`, "Recipes you plan are sent to Homebase by themselves."),
+            h("div", { class: "row-btns" },
+              h("button", { class: "btn ghost sm", type: "button", onClick: async () => { const n = await P.hb.syncAll(); P.toast(`Sent ${n} planned meal${n === 1 ? "" : "s"} to Homebase.`); } }, "Send my plan now"),
+              h("button", { class: "btn danger-ghost sm", type: "button", onClick: () => { P.hb.disconnect(); redraw(); } }, "Disconnect")))
+          : h("div", {},
+            h("p", { class: "set-about" }, "In Homebase open More, then Linked apps, then Link Platter. It gives you a link that connects this Platter."),
+            h("div", { class: "row-btns" },
+              h("button", { class: "btn ghost sm", type: "button", onClick: () => P.hb.paste() }, "Paste the link"),
+              h("a", { class: "btn ghost sm", href: P.hb.base() || "https://homebase-family.onrender.com", target: "_blank", rel: "noopener" }, "Open Homebase")))),
       section("Your data", "Your recipes, favorites, plans and lists live in this browser. Back them up to move them to another device.",
         h("div", { class: "row-btns" },
           h("button", { class: "btn ghost sm", type: "button", onClick: backup }, hi("download"), "Download a backup"),
@@ -98,6 +105,7 @@
 
       section("Help", null,
         h("div", { class: "row-btns" },
+          h("button", { class: "btn lime sm", type: "button", onClick: () => window.Tour ? window.Tour.open() : P.toast("The tutorial did not load. Reload the page.") }, hi("sparkle"), "Show the tutorial"),
           h("button", { class: "btn ghost sm", type: "button", onClick: () => P.views.shortcuts() }, hi("keyboard"), "Keyboard shortcuts"),
           h("button", { class: "btn ghost sm", type: "button", onClick: () => { ui.welcomed = false; P.save(); P.go("discover"); } }, hi("sparkle"), "Show the welcome tips again"))),
 

@@ -9,13 +9,17 @@
   const TOURS = {
     homebase: { ready: () => { const a = document.getElementById("app"); return a && !a.classList.contains("hidden"); }, steps: [
       S("🏠", "Welcome to Homebase", "Your family on a map, with messages and calls. It is honest about everything it shares, and you can always pause. This takes a minute."),
+      S("🧭", "Five sections", "The left panel has Home, Map, Plan, Chat and More. Home is today at a glance. Map is your people and places. Plan has the calendar and the meals. Chat has the family chat and friend groups. More has rewards, jobs, the family board, rules and linked apps."),
       S("🗺️", "The map", "Everyone who is sharing shows up as a pin, parents too. If someone goes offline you still see where they were last, and how long ago."),
       S("📍", "Share my location", "In the left panel, the Share my location switch is yours. You can pause for 15 minutes or an hour. The family always sees when it is paused, so nobody wonders."),
       S("💬", "Messages and calls", "Click a person to Message, Call, or ask Where are you?. They can always say not now. Turn on desktop notifications in the left panel so you never miss a message or call."),
       S("✅", "Check in", "The bar at the top has I'm OK, Late and SOS. Hold SOS for two seconds in an emergency and everyone is told with your location."),
       S("🏡", "Places and Home", "Set the Home area and add places like school. Everyone is told when someone arrives or leaves, including the person it is about."),
       S("⏱️", "Screen time, rules and locks", "Children can see their own screen time (only time spent playing or watching). Parents can read it if the child allows, set the family rules, and lock a device for a while, never more than 4 hours a day."),
-      S("🔒", "Everyone is in control", "Open Menu to switch off what parents can do, set quiet hours, or change the look. Whatever is off, the family can see that it is off."),
+      S("📅", "Calendar and meals", "In Plan, add things to the family calendar and say who is in. Plan a meal for any day and say who is cooking: the recipe comes with it. Apps like Platter and Scout can add to the calendar too."),
+      S("🎞️", "Stickers and friend groups", "Send stickers and GIFs in chat. Friend groups are separate from the family: friends can chat, but mild words only. Swearing and insults are censored, and a child's parents can read the group."),
+      S("🔗", "Linked apps", "A parent can link Platter and Scout from More, then Linked apps. Each linked app can only do the one thing it is for, and you can unlink it any time."),
+      S("🔒", "Everyone is in control", "Open Menu to switch off what parents can do, set quiet hours, or change the look. Whatever is off, the family can see that it is off. The Menu also has this tutorial under Help, so you can read it again any time."),
     ] },
     alibi: { steps: [
       S("🕵️", "Welcome to Alibi", "A murder party for your phones. A normal weekend turns into a mystery, and one of the players is the killer."),
@@ -83,17 +87,17 @@
 
   const style = document.createElement("style");
   style.textContent = `
-  .tr-btn{position:fixed;left:12px;bottom:56px;z-index:2147482000;width:34px;height:34px;border-radius:50%;border:1px solid #2a2a30;background:#121214;color:#b9b9c2;font:700 15px system-ui,sans-serif;cursor:pointer;opacity:.6;padding:0}
-  .tr-btn:hover,.tr-btn:focus-visible{opacity:1;outline:2px solid #5b93ff}
-  .tr-scrim{position:fixed;inset:0;z-index:2147483200;background:rgba(0,0,0,.66);display:grid;place-items:center;padding:16px;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
-  .tr-card{width:min(440px,100%);background:#121214;color:#ececf0;border:1px solid #2a2a30;border-radius:24px;padding:28px 26px 22px;box-shadow:0 24px 70px rgba(0,0,0,.65);animation:trIn .22s ease}
+  .tr-btn{position:fixed;left:12px;bottom:56px;z-index:2147482000;width:34px;height:34px;border-radius:50%;border:1px solid #d6d6dc;background:#ffffff;color:#62626b;font:700 15px system-ui,sans-serif;cursor:pointer;opacity:.6;padding:0}
+  .tr-btn:hover,.tr-btn:focus-visible{opacity:1;outline:2px solid #17171a}
+  .tr-scrim{position:fixed;inset:0;z-index:2147483200;background:rgba(20,20,26,.42);display:grid;place-items:center;padding:16px;font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+  .tr-card{width:min(440px,100%);background:#ffffff;color:#17171a;border:1px solid #e1e1e6;border-radius:24px;padding:28px 26px 22px;box-shadow:0 24px 70px rgba(20,20,26,.22);animation:trIn .22s ease}
   .tr-emo{font-size:46px;line-height:1}.tr-card h2{margin:14px 0 8px;font-size:24px;letter-spacing:-.02em;font-weight:700}
-  .tr-card p{margin:0;color:#a9a9b2;font-size:16px;line-height:1.55}
-  .tr-dots{display:flex;gap:6px;margin:22px 0 18px}.tr-dots i{height:6px;width:6px;border-radius:3px;background:#2a2a30;transition:width .2s,background .2s}.tr-dots i.on{width:22px;background:#5b93ff}
+  .tr-card p{margin:0;color:#62626b;font-size:16px;line-height:1.55}
+  .tr-dots{display:flex;gap:6px;margin:22px 0 18px}.tr-dots i{height:6px;width:6px;border-radius:3px;background:#d6d6dc;transition:width .2s,background .2s}.tr-dots i.on{width:22px;background:#17171a}
   .tr-row{display:flex;gap:10px;align-items:center}.tr-row .sp{flex:1}
-  .tr-b{border:0;border-radius:14px;padding:12px 18px;font:600 15px system-ui,sans-serif;cursor:pointer;background:#1b1b1f;color:#ececf0}
-  .tr-b.go{background:#5b93ff;color:#08101f}.tr-b.ghost{background:none;color:#8d8d96;padding:12px 8px}
-  .tr-b:focus-visible{outline:2px solid #5b93ff;outline-offset:2px}
+  .tr-b{border:0;border-radius:14px;padding:12px 18px;font:600 15px system-ui,sans-serif;cursor:pointer;background:#efeff2;color:#17171a}
+  .tr-b.go{background:#17171a;color:#ffffff}.tr-b.ghost{background:none;color:#62626b;padding:12px 8px}
+  .tr-b:focus-visible{outline:2px solid #17171a;outline-offset:2px}
   @keyframes trIn{from{opacity:0;transform:translateY(8px) scale(.98)}}
   @media (prefers-reduced-motion:reduce){.tr-card{animation:none}.tr-dots i{transition:none}}`;
   document.head.append(style);
@@ -134,7 +138,7 @@
     const b = document.createElement("button");
     b.className = "tr-btn"; b.type = "button"; b.textContent = "?"; b.title = "How this works"; b.setAttribute("aria-label", "How this works");
     b.onclick = () => open(0); document.body.append(b);
-    if (get()) return;
+    if (get() || (me && me.dataset.auto === "0")) return;        // data-auto="0": only open from the ? button (the Showcase is a portfolio, a pop-up in front of it is rude)
     let tries = 0;
     const tick = () => { if (get() || scrim) return; if (!T.ready || T.ready()) { if (!document.querySelector(".hub-ov")) return setTimeout(() => open(0), 900); } if (++tries < 90) setTimeout(tick, 1000); };
     setTimeout(tick, 1200);

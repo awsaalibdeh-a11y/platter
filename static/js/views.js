@@ -74,6 +74,7 @@
     P.on("plan", () => { syncQuick(); if (P.route.mode === "plan") renderDetail(); });
     P.on("books", onBooks);
     P.on("install", () => P.route.mode === "settings" && renderDetail());
+    P.on("homebase", () => P.route.mode === "settings" && renderDetail());
     P.on("prices", () => { renderList(); if (["view", "shop", "plan", "discover"].includes(P.route.mode)) renderDetail(); });
     P.on("diet", () => { renderList(); if (P.route.mode === "view" && P.route.id || P.route.mode === "discover" || P.route.mode === "pantry") renderDetail(); });
     P.on("units", () => P.route.mode === "view" && P.route.id && renderDetail());

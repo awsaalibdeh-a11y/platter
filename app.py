@@ -122,6 +122,9 @@ def headers(resp):
     return resp
 
 
+HOMEBASE_ORIGINS = os.environ.get("HOMEBASE_ORIGINS", "https://homebase-family.onrender.com").split()      # the Homebase addresses this page may talk to
+
+
 def _csp(nonce):
     """What the page may load. Recipe photos come from anywhere a recipe was imported from, so images stay open;
     scripts are Platter's own plus the one inline boot script, which carries this response's nonce."""
@@ -131,7 +134,7 @@ def _csp(nonce):
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
         "font-src 'self' https://fonts.gstatic.com",
         "img-src 'self' data: blob: https:",
-        "connect-src 'self' https://api.bigdatacloud.net https://cramly-twz5.onrender.com",
+        "connect-src 'self' https://api.bigdatacloud.net https://cramly-twz5.onrender.com " + " ".join(HOMEBASE_ORIGINS),
         "media-src 'self' data: blob:",
         "worker-src 'self'",
         "manifest-src 'self'",
@@ -145,7 +148,7 @@ def _csp(nonce):
 @app.route("/")
 def index():
     nonce = secrets.token_urlsafe(16)
-    resp = Response(render_template("index.html", v=_asset_version(), nonce=nonce), mimetype="text/html")   # a few stat() calls: cheap
+    resp = Response(render_template("index.html", v=_asset_version(), nonce=nonce, hb=HOMEBASE_ORIGINS), mimetype="text/html")   # a few stat() calls: cheap
     resp.headers["Content-Security-Policy"] = _csp(nonce)
     return resp
 
