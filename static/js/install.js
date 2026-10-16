@@ -5,7 +5,7 @@
   const P = window.P;
   const { h } = P;
   const KEY = "platter.install";
-  const standalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  const standalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true || /AwsaaApp/.test(navigator.userAgent);       // an installed app, or the Android app
   const ios = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const read = () => { try { return JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch { return {}; } };
   const write = (o) => { try { localStorage.setItem(KEY, JSON.stringify({ ...read(), ...o })); } catch { /* private mode */ } };
@@ -55,4 +55,6 @@
   addEventListener("load", () => setTimeout(wait, 1800));
   P.on("install", () => { if (P.installPrompt) show(); else hide(); });                // the browser said the page qualifies (or it was just installed)
   addEventListener("appinstalled", hide);
+  // the Android app, when one has been published (settings shows its download)
+  if (!/AwsaaApp/.test(navigator.userAgent)) fetch("/platter.apk", { method: "HEAD" }).then((r) => { if (r.ok) { P.androidApk = true; P.emit("install"); } }).catch(() => { /* offline */ });
 })();

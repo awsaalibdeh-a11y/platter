@@ -77,12 +77,13 @@
           h("button", { class: "btn ghost sm", type: "button", onClick: () => P.prices.sheet() }, "Change"))),
 
       (() => {
-        const installed = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+        const installed = matchMedia("(display-mode: standalone)").matches || navigator.standalone || /AwsaaApp/.test(navigator.userAgent);
         const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
         return section("Get the app", "Open Platter like any other app: its own icon, full screen, and it works offline.",
           installed ? row("check", "Installed", "You're using Platter as an app.")
                         : h("div", { class: "row-btns" }, h("button", { class: "btn lime sm", type: "button", onClick: async () => { await P.installApp(); redraw(); } }, hi("download"), "Install Platter"),
-              ios ? h("p", { class: "set-about" }, "On iPhone or iPad: tap the Share button, then “Add to Home Screen”.") : null))
+              ios ? h("p", { class: "set-about" }, "On iPhone or iPad: tap the Share button, then “Add to Home Screen”.") : null,
+              P.androidApk ? h("a", { class: "btn ghost sm", href: "/platter.apk", download: "Platter.apk" }, hi("download"), "Android app") : null))
       })(),
       section("Homebase", "Plan a recipe on a day here and it appears on your family's meal plan in Homebase, with the recipe.",
         P.hb.connected()

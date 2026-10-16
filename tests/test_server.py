@@ -78,6 +78,19 @@ class Pages(unittest.TestCase):
             self.assertIn(f"/static/js/{script}", page)
             self.assertEqual(self.c.get(f"/static/js/{script}").status_code, 200)
 
+    def test_the_android_app_is_offered_as_a_download(self):
+        r = self.c.get("/platter.apk")
+        try:
+            self.assertEqual((r.status_code, r.mimetype), (200, "application/vnd.android.package-archive"))
+            self.assertIn("Platter.apk", r.headers["Content-Disposition"])
+            self.assertEqual(r.data[:2], b"PK", "an APK is a zip file")
+            self.assertGreater(len(r.data), 10000)
+        finally:
+            r.close()
+        head = self.c.head("/platter.apk")
+        head.close()
+        self.assertEqual(head.status_code, 200, "the settings page checks with HEAD")
+
     def test_service_worker_is_never_cached_hard(self):
         r = self.c.get("/sw.js")
         self.assertEqual(r.status_code, 200)

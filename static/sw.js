@@ -39,7 +39,7 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
 
   if (url.origin === self.location.origin) {
-    if (url.pathname.startsWith("/api/") || ["/sw.js", "/healthz", "/version"].includes(url.pathname)) return;   // never kept
+    if (url.pathname.startsWith("/api/") || ["/sw.js", "/healthz", "/version", "/platter.apk"].includes(url.pathname)) return;   // never kept (the Android app is a download, not a page)
     if (req.mode === "navigate") return event.respondWith(page(req));
     if (url.pathname.startsWith("/static/") && url.searchParams.has("v")) return event.respondWith(versioned(req));
     return event.respondWith(revalidate(req, APP));                                                             // icons, manifest

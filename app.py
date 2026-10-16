@@ -19,7 +19,7 @@ from urllib.parse import urljoin, urlparse
 
 import requests
 from dotenv import load_dotenv
-from flask import Flask, Response, abort, jsonify, render_template, request
+from flask import Flask, Response, abort, jsonify, render_template, request, send_from_directory
 from urllib3.util import connection as urllib3_connection
 from werkzeug.utils import safe_join
 
@@ -164,6 +164,16 @@ def version():
 @app.route("/healthz")
 def healthz():
     return "ok"
+
+
+@app.route("/platter.apk")
+def android_app():
+    """The Android app (a wrapper around this site, built by C:/Edits/appwrap). 404 if it has not been published."""
+    if not os.path.exists(os.path.join(STATIC, "platter.apk")):
+        abort(404)
+    resp = send_from_directory(STATIC, "platter.apk", mimetype="application/vnd.android.package-archive", as_attachment=True, download_name="Platter.apk")
+    resp.headers["Cache-Control"] = "no-cache"
+    return resp
 
 
 @app.route("/sw.js")
