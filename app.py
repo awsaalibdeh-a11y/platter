@@ -122,7 +122,7 @@ def headers(resp):
     return resp
 
 
-HOMEBASE_ORIGINS = os.environ.get("HOMEBASE_ORIGINS", "https://homebase-family.onrender.com").split()      # the Homebase addresses this page may talk to
+HOMEBASE_ORIGINS = os.environ.get("HOMEBASE_ORIGINS", "https://homebase-family.onrender.com").split()      # the Mellow addresses this page may talk to
 
 
 def _csp(nonce):

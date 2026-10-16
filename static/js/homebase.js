@@ -1,8 +1,8 @@
-/* Platter ↔ Homebase: plan a recipe on a day in Platter and it appears on the family's meal plan in Homebase, with the recipe in it.
+/* Platter ↔ Mellow: plan a recipe on a day in Platter and it appears on the family's meal plan in Mellow, with the recipe in it.
 
-   Homebase gives a parent a link ("Link Platter"). Opening that link here connects this Platter: the key it carries is kept in this browser and the
-   address bar is cleaned straight away. After that, every add, move, change of servings or removal on the meal plan is sent to Homebase.
-   The key can only add and remove meals, and Homebase can unlink it at any time. This page may only talk to the Homebase addresses the server allows. */
+   Mellow gives a parent a link ("Link Platter"). Opening that link here connects this Platter: the key it carries is kept in this browser and the
+   address bar is cleaned straight away. After that, every add, move, change of servings or removal on the meal plan is sent to Mellow.
+   The key can only add and remove meals, and Mellow can unlink it at any time. This page may only talk to the Mellow addresses the server allows. */
 (() => {
   const P = window.P;
   const { h } = P;
@@ -18,12 +18,12 @@
     const r = await fetch(conn.base + path, {
       method, headers: { Authorization: "Bearer " + conn.key, ...(body ? { "Content-Type": "application/json" } : {}) }, body: body ? JSON.stringify(body) : undefined,
     });
-    if (r.status === 401) { conn = null; write(KEY, null); P.emit("homebase"); throw Object.assign(new Error("Homebase says this link is not valid any more."), { final: true }); }
-    if (!r.ok) throw Object.assign(new Error((await r.json().catch(() => ({}))).error || "Homebase did not accept that."), { final: r.status < 500 && r.status !== 429 });
+    if (r.status === 401) { conn = null; write(KEY, null); P.emit("homebase"); throw Object.assign(new Error("Mellow says this link is not valid any more."), { final: true }); }
+    if (!r.ok) throw Object.assign(new Error((await r.json().catch(() => ({}))).error || "Mellow did not accept that."), { final: r.status < 500 && r.status !== 429 });
     return r.json().catch(() => ({}));
   };
 
-  /** What Homebase gets for a planned recipe: the title, photo, a link back, and the ingredients and method scaled to the servings planned. */
+  /** What Mellow gets for a planned recipe: the title, photo, a link back, and the ingredients and method scaled to the servings planned. */
   const payload = (k, e) => {
     const r = P.recipe(e.id);
     if (!r) return null;
@@ -82,8 +82,8 @@
   const decode = (c) => { try { return JSON.parse(decodeURIComponent(escape(atob(c.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(c.length / 4) * 4, "="))))); } catch { return null; } };
   const connect = async (code) => {
     const d = decode(code);
-    if (!d || !d.b || !d.k) { P.toast("That Homebase link is not valid."); return false; }
-    if (!ALLOWED.includes(d.b)) { P.toast("This Homebase address is not one Platter is allowed to talk to."); return false; }
+    if (!d || !d.b || !d.k) { P.toast("That Mellow link is not valid."); return false; }
+    if (!ALLOWED.includes(d.b)) { P.toast("This Mellow address is not one Platter is allowed to talk to."); return false; }
     try {
       const r = await fetch(d.b + "/api/ext/ping", { headers: { Authorization: "Bearer " + d.k } });
       if (!r.ok) throw new Error("no");
@@ -92,9 +92,9 @@
       write(KEY, conn);
       P.emit("homebase");
       const n = await syncAll();
-      P.toast(`Connected to ${info.family}. ${n ? `${n} planned meal${n === 1 ? "" : "s"} sent. ` : ""}Recipes you plan now appear in Homebase.`, { ms: 8000 });
+      P.toast(`Connected to ${info.family}. ${n ? `${n} planned meal${n === 1 ? "" : "s"} sent. ` : ""}Recipes you plan now appear in Mellow.`, { ms: 8000 });
       return true;
-    } catch { P.toast("Could not connect to Homebase. Open the link from Homebase again."); return false; }
+    } catch { P.toast("Could not connect to Mellow. Open the link from Mellow again."); return false; }
   };
   const fromHash = () => {
     const m = location.hash.match(/^#\/homebase\?c=([A-Za-z0-9_-]+)$/);
@@ -116,16 +116,16 @@
     /** A sheet to paste the link into (for when it was opened on another device). */
     paste() {
       P.sheet((close) => {
-        const input = h("input", { class: "input", placeholder: "Paste the link from Homebase", autocomplete: "off", "data-autofocus": "" });
+        const input = h("input", { class: "input", placeholder: "Paste the link from Mellow", autocomplete: "off", "data-autofocus": "" });
         return [
-          h("h3", { class: "sheet-h" }, "Connect to Homebase"),
-          h("p", { class: "set-about" }, "In Homebase open More, then Linked apps, then Link Platter, and copy the link. Paste it here."),
+          h("h3", { class: "sheet-h" }, "Connect to Mellow"),
+          h("p", { class: "set-about" }, "In Mellow open More, then Linked apps, then Link Platter, and copy the link. Paste it here."),
           input,
           h("div", { class: "sheet-btns" },
             h("button", { class: "btn ghost", type: "button", onClick: close }, "Cancel"),
-            h("button", { class: "btn lime", type: "button", onClick: async () => { const m = input.value.match(/[#?&]c=([A-Za-z0-9_-]+)/); if (m && (await connect(m[1]))) close(); else if (!m) P.toast("That does not look like a Homebase link."); } }, "Connect")),
+            h("button", { class: "btn lime", type: "button", onClick: async () => { const m = input.value.match(/[#?&]c=([A-Za-z0-9_-]+)/); if (m && (await connect(m[1]))) close(); else if (!m) P.toast("That does not look like a Mellow link."); } }, "Connect")),
         ];
-      }, { label: "Connect to Homebase" });
+      }, { label: "Connect to Mellow" });
     },
   };
 })();

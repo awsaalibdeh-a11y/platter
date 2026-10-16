@@ -85,18 +85,18 @@
               ios ? h("p", { class: "set-about" }, "On iPhone or iPad: tap the Share button, then “Add to Home Screen”.") : null,
               P.androidApk ? h("a", { class: "btn ghost sm", href: "/platter.apk", download: "Platter.apk" }, hi("download"), "Android app") : null))
       })(),
-      section("Homebase", "Plan a recipe on a day here and it appears on your family's meal plan in Homebase, with the recipe.",
+      section("Mellow", "Plan a recipe on a day here and it appears on your family's meal plan in Mellow, with the recipe.",
         P.hb.connected()
           ? h("div", {},
-            row("check", `Connected to ${P.hb.family()}`, "Recipes you plan are sent to Homebase by themselves."),
+            row("check", `Connected to ${P.hb.family()}`, "Recipes you plan are sent to Mellow by themselves."),
             h("div", { class: "row-btns" },
-              h("button", { class: "btn ghost sm", type: "button", onClick: async () => { const n = await P.hb.syncAll(); P.toast(`Sent ${n} planned meal${n === 1 ? "" : "s"} to Homebase.`); } }, "Send my plan now"),
+              h("button", { class: "btn ghost sm", type: "button", onClick: async () => { const n = await P.hb.syncAll(); P.toast(`Sent ${n} planned meal${n === 1 ? "" : "s"} to Mellow.`); } }, "Send my plan now"),
               h("button", { class: "btn danger-ghost sm", type: "button", onClick: () => { P.hb.disconnect(); redraw(); } }, "Disconnect")))
           : h("div", {},
-            h("p", { class: "set-about" }, "In Homebase open More, then Linked apps, then Link Platter. It gives you a link that connects this Platter."),
+            h("p", { class: "set-about" }, "In Mellow open More, then Linked apps, then Link Platter. It gives you a link that connects this Platter."),
             h("div", { class: "row-btns" },
               h("button", { class: "btn ghost sm", type: "button", onClick: () => P.hb.paste() }, "Paste the link"),
-              h("a", { class: "btn ghost sm", href: P.hb.base() || "https://homebase-family.onrender.com", target: "_blank", rel: "noopener" }, "Open Homebase")))),
+              h("a", { class: "btn ghost sm", href: P.hb.base() || "https://homebase-family.onrender.com", target: "_blank", rel: "noopener" }, "Open Mellow")))),
       section("Your data", "Your recipes, favorites, plans and lists live in this browser. Back them up to move them to another device.",
         h("div", { class: "row-btns" },
           h("button", { class: "btn ghost sm", type: "button", onClick: backup }, hi("download"), "Download a backup"),
