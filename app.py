@@ -36,6 +36,8 @@ urllib3_connection.allowed_gai_family = lambda: socket.AF_INET
 BASE = os.path.dirname(os.path.abspath(__file__))
 STATIC = os.path.join(BASE, "static")
 app = Flask(__name__, static_folder=None)          # assets are served by static_files() below
+from flask_compress import Compress  # noqa: E402  (gzip pages, JSON and scripts: Render's free plan counts bandwidth)
+Compress(app)
 import hubguard  # noqa: E402  (the owner's universal switches, kept in Cramly)
 hubguard.install(app, "platter")
 app.config["TEMPLATES_AUTO_RELOAD"] = True          # an edited index.html shows up without a restart
